@@ -3,6 +3,8 @@ import express from 'express';
 import './utils/global.js';
 import sequelize from './config/database.js';
 import authRoutes from './routes/authRoutes.js';
+import cookRoutes from './routes/cookRoutes.js';
+import pairRoutes from './routes/pairRoutes.js';
 
 const app = express();
 
@@ -13,6 +15,8 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/pair', pairRoutes);
+app.use('/api/cook', cookRoutes);
 
 app.use((req, res) => {
   return Response.notFound(res, '接口不存在');
@@ -31,8 +35,10 @@ const startServer = async () => {
     Logger.success('数据库连接成功');
 
     if (process.env.DB_SYNC === 'true') {
-      await sequelize.sync();
+      await sequelize.sync({ alter: true }); // alter: true 会自动修改表结构以匹配模型
       Logger.info('数据库同步完成');
+    } else {
+      Logger.warn('没有开启表同步');
     }
 
     app.listen(port, () => {
