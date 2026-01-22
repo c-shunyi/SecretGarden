@@ -70,6 +70,11 @@
 				再炒一次
 			</button>
 		</view>
+		
+		<!-- 悬浮按钮 -->
+		<view class="float-btn" @click="goToGame">
+			<text class="float-icon">🎮</text>
+		</view>
 	</view>
 </template>
 
@@ -268,6 +273,11 @@
 				} finally {
 					this.recordLoading = false
 				}
+			},
+			goToGame() {
+				uni.navigateTo({
+					url: '/pages/game/game'
+				});
 			}
 		}
 	}
@@ -275,9 +285,9 @@
 
 <style>
 	.page {
-		min-height: 100vh;
 		height: 100vh;
 		padding: 48rpx 32rpx 80rpx;
+		box-sizing: border-box;
 		background: linear-gradient(150deg, #fff3e6 0%, #ffe8d6 40%, #ffe6c7 100%);
 		background-image: radial-gradient(
 				circle at 12% 20%,
@@ -524,5 +534,30 @@
 			opacity: 1;
 			transform: translateY(0);
 		}
+	}
+
+	.float-btn {
+		position: fixed;
+		right: 40rpx;
+		bottom: 80rpx;
+		width: 120rpx;
+		height: 120rpx;
+		border-radius: 50%;
+		background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+		box-shadow: 0 12rpx 32rpx rgba(52, 152, 219, 0.4);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 999;
+		transition: all 0.3s ease;
+	}
+
+	.float-btn:active {
+		transform: scale(0.9);
+		box-shadow: 0 8rpx 24rpx rgba(52, 152, 219, 0.3);
+	}
+
+	.float-icon {
+		font-size: 56rpx;
 	}
 </style>
