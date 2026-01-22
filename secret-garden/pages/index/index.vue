@@ -1,4 +1,4 @@
-﻿<template>
+<template>
 	<view class="page">
 		<view class="hero">
 			<text class="title">Secret Garden</text>
@@ -48,14 +48,17 @@
 				</text>
 			</view>
 
-			<button
-				class="btn primary main"
-				:disabled="hasRecordToday || recordLoading"
-				:loading="recordLoading"
-				@click="recordCook('main')"
-			>
-				{{ hasRecordToday ? '美味' : '炒了吗' }}
-			</button>
+			<view class="cook-action">
+				<button
+					class="btn-circle"
+					:class="{ active: !hasRecordToday }"
+					:disabled="hasRecordToday || recordLoading"
+					:loading="recordLoading"
+					@click="recordCook('main')"
+				>
+					<text class="btn-text">{{ hasRecordToday ? '美味' : '炒了吗' }}</text>
+				</button>
+			</view>
 
 			<button
 				v-if="hasRecordToday"
@@ -273,6 +276,7 @@
 <style>
 	.page {
 		min-height: 100vh;
+		height: 100vh;
 		padding: 48rpx 32rpx 80rpx;
 		background: linear-gradient(150deg, #fff3e6 0%, #ffe8d6 40%, #ffe6c7 100%);
 		background-image: radial-gradient(
@@ -283,6 +287,9 @@
 			linear-gradient(150deg, #fff3e6 0%, #ffe8d6 40%, #ffe6c7 100%);
 		color: #3d2c2e;
 		font-family: "Songti SC", "STSong", "Noto Serif SC", serif;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
 	}
 
 	.hero {
@@ -304,12 +311,16 @@
 	}
 
 	.card {
+		flex: 1;
 		padding: 32rpx;
 		background: rgba(255, 255, 255, 0.85);
 		border-radius: 28rpx;
 		box-shadow: 0 16rpx 32rpx rgba(222, 116, 74, 0.15);
 		backdrop-filter: blur(8rpx);
 		animation: rise 580ms ease-out;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
 	}
 
 	.section-title {
@@ -449,6 +460,59 @@
 
 	.btn[disabled] {
 		opacity: 0.65;
+	}
+
+	.cook-action {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		padding: 60rpx 0;
+	}
+
+	.btn-circle {
+		width: 320rpx;
+		height: 320rpx;
+		border-radius: 50%;
+		background: linear-gradient(135deg, #e07a5f 0%, #f4a261 100%);
+		color: #fffaf6;
+		font-size: 48rpx;
+		font-weight: 600;
+		letter-spacing: 4rpx;
+		box-shadow: 0 20rpx 40rpx rgba(224, 122, 95, 0.4);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border: none;
+		transition: all 0.3s ease;
+	}
+
+	.btn-circle::after {
+		border: none;
+	}
+
+	.btn-circle.active {
+		animation: pulse 2s ease-in-out infinite;
+	}
+
+	.btn-circle[disabled] {
+		background: linear-gradient(135deg, #d4a59a 0%, #e6c4b8 100%);
+		box-shadow: 0 12rpx 24rpx rgba(224, 122, 95, 0.2);
+		opacity: 0.8;
+	}
+
+	.btn-text {
+		display: block;
+	}
+
+	@keyframes pulse {
+		0%, 100% {
+			transform: scale(1);
+			box-shadow: 0 20rpx 40rpx rgba(224, 122, 95, 0.4);
+		}
+		50% {
+			transform: scale(1.05);
+			box-shadow: 0 24rpx 48rpx rgba(224, 122, 95, 0.5);
+		}
 	}
 
 	@keyframes rise {
