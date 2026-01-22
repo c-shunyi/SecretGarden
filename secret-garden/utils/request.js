@@ -24,30 +24,14 @@ const request = (options) => {
       header,
       success: (res) => {
         // 处理响应
-        if (res.statusCode === 200) {
+        if (res.statusCode === 200 || res.statusCode === 201) {
           const data = res.data;
           
-          // 业务成功
-          if (data.code === 200) {
+          // 业务成功 (code: 0)
+          if (data.code === 0) {
             resolve(data);
           } 
-          // Token 无效，跳转登录
-          else if (data.code === 401) {
-            uni.removeStorageSync('token');
-            uni.showToast({
-              title: data.msg || 'Token无效',
-              icon: 'none'
-            });
-            
-            setTimeout(() => {
-              uni.reLaunch({
-                url: '/pages/login/login'
-              });
-            }, 1500);
-            
-            reject(data);
-          }
-          // 其他业务错误
+          // 其他情况视为错误
           else {
             uni.showToast({
               title: data.msg || '请求失败',
@@ -55,12 +39,30 @@ const request = (options) => {
             });
             reject(data);
           }
-        } else {
+        } 
+        // Token 无效，跳转登录
+        else if (res.statusCode === 401) {
+          uni.removeStorageSync('token');
           uni.showToast({
-            title: '网络错误',
+            title: res.data?.msg || 'Token无效',
             icon: 'none'
           });
-          reject(res);
+          
+          setTimeout(() => {
+            uni.reLaunch({
+              url: '/pages/login/login'
+            });
+          }, 1500);
+          
+          reject(res.data);
+        }
+        // 其他 HTTP 错误
+        else {
+          uni.showToast({
+            title: res.data?.msg || '请求失败',
+            icon: 'none'
+          });
+          reject(res.data);
         }
       },
       fail: (err) => {

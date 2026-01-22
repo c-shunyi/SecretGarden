@@ -31,28 +31,36 @@ export const register = async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
-    if (!username || !email || !password) {
-      return Response.validationError(res, '用户名、邮箱和密码不能为空');
+    if (!username || !password) {
+      return Response.validationError(res, '用户名和密码不能为空');
     }
 
     if (password.length < 6) {
       return Response.validationError(res, '密码至少6位');
     }
 
+    const whereCondition = { username };
+    if (email) {
+      whereCondition[Op.or] = [{ username }, { email }];
+    }
+
     const existingUser = await User.findOne({
-      where: {
-        [Op.or]: [{ username }, { email }]
-      }
+      where: whereCondition
     });
 
     if (existingUser) {
-      return Response.validationError(res, '用户名或邮箱已存在');
+      if (existingUser.username === username) {
+        return Response.validationError(res, '用户名已存在');
+      }
+      if (email && existingUser.email === email) {
+        return Response.validationError(res, '邮箱已存在');
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({
       username,
-      email,
+      email: email || null,
       password: hashedPassword
     });
 

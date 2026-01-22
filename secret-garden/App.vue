@@ -8,6 +8,13 @@
 		},
 		onHide: function() {
 			console.log('App Hide')
+		},
+		onError: function(err) {
+			// 过滤微信开发者工具的系统错误
+			if (err.includes('webapi_getwxaasyncsecinfo')) {
+				return;
+			}
+			console.error('App Error:', err);
 		}
 	}
 </script>
