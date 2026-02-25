@@ -4,6 +4,10 @@
   box-sizing: border-box;
 }
 
+:root {
+  --font-main: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+}
+
 html,
 body,
 #app {
@@ -19,13 +23,7 @@ html {
 }
 
 body {
-  font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    'PingFang SC',
-    'Microsoft YaHei',
-    'Segoe UI',
-    sans-serif;
+  font-family: var(--font-main);
   background: #f4fce3;
   color: #1f2f1f;
 }
