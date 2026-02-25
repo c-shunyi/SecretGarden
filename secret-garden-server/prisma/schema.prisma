@@ -1,0 +1,71 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum InvitationStatus {
+  OPEN
+  USED
+  EXPIRED
+  CANCELLED
+}
+
+model User {
+  id            Int     @id @default(autoincrement())
+  account       String  @unique
+  passwordHash  String
+  nickname      String?
+  birthday      DateTime?
+  bio           String?
+  avatarFileId  Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sentInvitations Invitation[] @relation("InvitationSender")
+  usedInvitations Invitation[] @relation("InvitationUsedBy")
+  coupleMember    CoupleMember?
+}
+
+model Invitation {
+  id        Int              @id @default(autoincrement())
+  code      String           @unique
+  inviterId Int
+  usedById  Int?
+  expiresAt DateTime
+  usedAt    DateTime?
+  status    InvitationStatus @default(OPEN)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  inviter User  @relation("InvitationSender", fields: [inviterId], references: [id], onDelete: Cascade)
+  usedBy  User? @relation("InvitationUsedBy", fields: [usedById], references: [id], onDelete: SetNull)
+
+  @@index([inviterId])
+  @@index([status, expiresAt])
+}
+
+model Couple {
+  id        Int            @id @default(autoincrement())
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  members   CoupleMember[]
+}
+
+model CoupleMember {
+  id       Int      @id @default(autoincrement())
+  coupleId Int
+  userId   Int      @unique
+  joinedAt DateTime @default(now())
+
+  couple Couple @relation(fields: [coupleId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([coupleId, userId])
+  @@index([coupleId])
+}
