@@ -28,7 +28,7 @@ const router = createRouter({
       path: '/bills',
       name: 'bills',
       component: BillView,
-      meta: { requiresAuth: true, showTabbar: true },
+      meta: { requiresAuth: true, showTabbar: false },
     },
     {
       path: '/mine',
