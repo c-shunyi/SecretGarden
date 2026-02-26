@@ -50,7 +50,7 @@ async function submit() {
       token: response.accessToken,
       user: response.user,
     })
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/center'
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/home'
     await router.replace(redirect)
   } catch (error) {
     errorText.value = error.message || '请求失败，请稍后再试'

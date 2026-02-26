@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { hasSession } from '@/stores/session'
 import AuthView from '@/views/AuthView.vue'
+import HomeView from '@/views/HomeView.vue'
 import UserCenterView from '@/views/UserCenterView.vue'
 
 const router = createRouter({
@@ -8,7 +9,7 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: () => (hasSession() ? '/center' : '/auth'),
+      redirect: () => (hasSession() ? '/home' : '/auth'),
     },
     {
       path: '/auth',
@@ -17,10 +18,20 @@ const router = createRouter({
       meta: { guestOnly: true },
     },
     {
-      path: '/center',
-      name: 'center',
+      path: '/home',
+      name: 'home',
+      component: HomeView,
+      meta: { requiresAuth: true, showTabbar: true },
+    },
+    {
+      path: '/mine',
+      name: 'mine',
       component: UserCenterView,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, showTabbar: true },
+    },
+    {
+      path: '/center',
+      redirect: '/mine',
     },
   ],
 })
@@ -31,7 +42,7 @@ router.beforeEach((to) => {
     return { path: '/auth', query: { redirect: to.fullPath } }
   }
   if (to.meta.guestOnly && loggedIn) {
-    return { path: '/center' }
+    return { path: '/home' }
   }
   return true
 })

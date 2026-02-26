@@ -208,10 +208,7 @@ onMounted(async () => {
 <template>
   <main class="page">
     <header class="header">
-      <div>
-        <h1 class="title">Secret Garden</h1>
-        <p class="sub">你好，{{ sessionState.user?.account || '用户' }}</p>
-      </div>
+      <p class="sub">你好，{{ sessionState.user?.account || '用户' }}</p>
       <button class="ghost-btn" :disabled="logoutLoading" @click="logout">
         {{ logoutLoading ? '退出中...' : '退出登录' }}
       </button>
@@ -304,7 +301,7 @@ onMounted(async () => {
 <style scoped>
 .page {
   min-height: 100dvh;
-  padding: 20px 16px 28px;
+  padding: 70px 16px 28px;
   background:
     radial-gradient(95% 70% at 0% 0%, rgba(194, 247, 220, 0.5), transparent 60%),
     radial-gradient(95% 70% at 100% 100%, rgba(218, 232, 255, 0.5), transparent 60%),
@@ -321,13 +318,8 @@ onMounted(async () => {
   max-width: 780px;
 }
 
-.title {
-  margin: 0;
-  font-size: 26px;
-}
-
 .sub {
-  margin: 4px 0 0;
+  margin: 0;
   color: #496147;
   font-size: 14px;
 }
