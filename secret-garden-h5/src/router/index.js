@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { hasSession } from '@/stores/session'
 import AuthView from '@/views/AuthView.vue'
 import HomeView from '@/views/HomeView.vue'
+import BillView from '@/views/BillView.vue'
 import UserCenterView from '@/views/UserCenterView.vue'
 
 const router = createRouter({
@@ -21,6 +22,12 @@ const router = createRouter({
       path: '/home',
       name: 'home',
       component: HomeView,
+      meta: { requiresAuth: true, showTabbar: true },
+    },
+    {
+      path: '/bills',
+      name: 'bills',
+      component: BillView,
       meta: { requiresAuth: true, showTabbar: true },
     },
     {

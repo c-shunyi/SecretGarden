@@ -4,6 +4,7 @@ const healthRouter = require("./routes/health");
 const authRouter = require("./routes/auth");
 const userRouter = require("./routes/user");
 const relationshipRouter = require("./routes/relationship");
+const billRouter = require("./routes/bill");
 const { errorHandler } = require("./middlewares/error-handler");
 
 const app = express();
@@ -27,6 +28,10 @@ app.get("/", (req, res) => {
       "POST /api/v1/relationship/invite",
       "POST /api/v1/relationship/bind",
       "POST /api/v1/relationship/unbind",
+      "GET /api/v1/bills",
+      "POST /api/v1/bills",
+      "PATCH /api/v1/bills/:id",
+      "DELETE /api/v1/bills/:id",
     ],
   });
 });
@@ -35,6 +40,7 @@ app.use("/api/health", healthRouter);
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/relationship", relationshipRouter);
+app.use("/api/v1/bills", billRouter);
 
 app.use((req, res) => {
   res.status(404).json({

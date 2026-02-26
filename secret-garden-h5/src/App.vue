@@ -40,6 +40,9 @@ watch(
       <RouterLink to="/home" class="drawer-link" :class="{ active: route.path === '/home' }">
         主页
       </RouterLink>
+      <RouterLink to="/bills" class="drawer-link" :class="{ active: route.path === '/bills' }">
+        记账
+      </RouterLink>
       <RouterLink to="/mine" class="drawer-link" :class="{ active: route.path === '/mine' }">
         我的
       </RouterLink>

@@ -93,6 +93,25 @@ async function createTables() {
         ON UPDATE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+
+  await execute(`
+    CREATE TABLE IF NOT EXISTS bills (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      user_id BIGINT UNSIGNED NOT NULL,
+      bill_type ENUM('EXPENSE', 'INCOME') NOT NULL DEFAULT 'EXPENSE',
+      category VARCHAR(32) NOT NULL,
+      amount DECIMAL(10, 2) NOT NULL,
+      note VARCHAR(255) NULL,
+      bill_date DATE NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      KEY idx_bills_user_date (user_id, bill_date),
+      CONSTRAINT fk_bills_user_id
+        FOREIGN KEY (user_id) REFERENCES users(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
 }
 
 function ensurePool() {
