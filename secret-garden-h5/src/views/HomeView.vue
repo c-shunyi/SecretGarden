@@ -6,14 +6,22 @@ import { RouterLink } from 'vue-router'
   <main class="home-page">
     <section class="welcome-card">
       <h1>欢迎使用 Secret Garden</h1>
-      <p>主页内容正在建设中。</p>
+      <p>主页正在持续完善中。</p>
     </section>
 
     <section class="tools">
       <RouterLink to="/bills" class="tool-card">
         <div class="tool-main">
           <h2>记账</h2>
-          <p>记录收入与支出，按月查看账单。</p>
+          <p>记录收入和支出，按月份查看账单。</p>
+        </div>
+        <span class="arrow">进入</span>
+      </RouterLink>
+
+      <RouterLink to="/checkin" class="tool-card">
+        <div class="tool-main">
+          <h2>打卡计划</h2>
+          <p>创建或加入计划，像朋友圈一样看最新打卡动态。</p>
         </div>
         <span class="arrow">进入</span>
       </RouterLink>
@@ -66,6 +74,7 @@ import { RouterLink } from 'vue-router'
   background: linear-gradient(130deg, #ffffff 0%, #eefcf2 100%);
   border: 1px solid #d6e9da;
   text-decoration: none;
+  margin-bottom: 10px;
 }
 
 .tool-main h2 {

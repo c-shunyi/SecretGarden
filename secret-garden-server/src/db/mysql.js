@@ -112,6 +112,107 @@ async function createTables() {
         ON UPDATE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+
+  await execute(`
+    CREATE TABLE IF NOT EXISTS files (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      user_id BIGINT UNSIGNED NOT NULL,
+      original_name VARCHAR(255) NOT NULL,
+      mime_type VARCHAR(100) NOT NULL,
+      size_bytes BIGINT UNSIGNED NOT NULL,
+      storage_path VARCHAR(500) NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_files_storage_path (storage_path),
+      KEY idx_files_user_id_created_at (user_id, created_at),
+      CONSTRAINT fk_files_user_id
+        FOREIGN KEY (user_id) REFERENCES users(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await execute(`
+    CREATE TABLE IF NOT EXISTS checkin_plans (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(60) NOT NULL,
+      description VARCHAR(255) NULL,
+      invite_code VARCHAR(20) NOT NULL UNIQUE,
+      creator_id BIGINT UNSIGNED NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      KEY idx_checkin_plans_creator_id (creator_id),
+      CONSTRAINT fk_checkin_plans_creator_id
+        FOREIGN KEY (creator_id) REFERENCES users(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await execute(`
+    CREATE TABLE IF NOT EXISTS checkin_plan_members (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      plan_id BIGINT UNSIGNED NOT NULL,
+      user_id BIGINT UNSIGNED NOT NULL,
+      role ENUM('OWNER', 'MEMBER') NOT NULL DEFAULT 'MEMBER',
+      joined_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_checkin_plan_members_plan_user (plan_id, user_id),
+      KEY idx_checkin_plan_members_user_id (user_id),
+      CONSTRAINT fk_checkin_plan_members_plan_id
+        FOREIGN KEY (plan_id) REFERENCES checkin_plans(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+      CONSTRAINT fk_checkin_plan_members_user_id
+        FOREIGN KEY (user_id) REFERENCES users(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await execute(`
+    CREATE TABLE IF NOT EXISTS checkin_posts (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      plan_id BIGINT UNSIGNED NOT NULL,
+      user_id BIGINT UNSIGNED NOT NULL,
+      content VARCHAR(2000) NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      KEY idx_checkin_posts_plan_created (plan_id, created_at),
+      KEY idx_checkin_posts_user_id (user_id),
+      CONSTRAINT fk_checkin_posts_plan_id
+        FOREIGN KEY (plan_id) REFERENCES checkin_plans(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+      CONSTRAINT fk_checkin_posts_user_id
+        FOREIGN KEY (user_id) REFERENCES users(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await execute(`
+    CREATE TABLE IF NOT EXISTS checkin_post_images (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      post_id BIGINT UNSIGNED NOT NULL,
+      file_id BIGINT UNSIGNED NOT NULL,
+      sort_order TINYINT UNSIGNED NOT NULL DEFAULT 0,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_checkin_post_images_post_file (post_id, file_id),
+      UNIQUE KEY uk_checkin_post_images_post_sort (post_id, sort_order),
+      KEY idx_checkin_post_images_file_id (file_id),
+      CONSTRAINT fk_checkin_post_images_post_id
+        FOREIGN KEY (post_id) REFERENCES checkin_posts(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+      CONSTRAINT fk_checkin_post_images_file_id
+        FOREIGN KEY (file_id) REFERENCES files(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
 }
 
 function ensurePool() {

@@ -209,9 +209,6 @@ onMounted(async () => {
   <main class="page">
     <header class="header">
       <p class="sub">你好，{{ sessionState.user?.account || '用户' }}</p>
-      <button class="ghost-btn" :disabled="logoutLoading" @click="logout">
-        {{ logoutLoading ? '退出中...' : '退出登录' }}
-      </button>
     </header>
 
     <p v-if="tipText" class="tip" :class="tipType === 'error' ? 'error' : 'ok'">{{ tipText }}</p>
@@ -253,6 +250,9 @@ onMounted(async () => {
           <button class="primary-btn" :disabled="profileSaving" @click="saveProfile">
             {{ profileSaving ? '保存中...' : '保存资料' }}
           </button>
+          <button class="ghost-btn" :disabled="logoutLoading" @click="logout">
+            {{ logoutLoading ? '退出中...' : '退出登录' }}
+          </button>
         </div>
       </section>
 
@@ -267,15 +267,6 @@ onMounted(async () => {
           伴侣：{{ relationship.partner.nickname || relationship.partner.account }}
           （ID: {{ relationship.partner.id }}）
         </p>
-
-        <div class="actions">
-          <button class="primary-btn" :disabled="inviteLoading || relationship.bound" @click="createInviteCode">
-            {{ inviteLoading ? '生成中...' : '生成邀请码' }}
-          </button>
-          <button class="danger-btn" :disabled="unbindLoading || !relationship.bound" @click="unbindRelationship">
-            {{ unbindLoading ? '解绑中...' : '解绑关系' }}
-          </button>
-        </div>
 
         <div v-if="inviteInfo.code" class="invite-box">
           <p>邀请码：<strong>{{ inviteInfo.code }}</strong></p>
@@ -293,6 +284,15 @@ onMounted(async () => {
         </div>
 
         <p v-if="relationshipLoading" class="mini-tip">关系状态刷新中...</p>
+
+        <div class="actions">
+          <button class="primary-btn" :disabled="inviteLoading || relationship.bound" @click="createInviteCode">
+            {{ inviteLoading ? '生成中...' : '生成邀请码' }}
+          </button>
+          <button class="danger-btn" :disabled="unbindLoading || !relationship.bound" @click="unbindRelationship">
+            {{ unbindLoading ? '解绑中...' : '解绑关系' }}
+          </button>
+        </div>
       </section>
     </template>
   </main>

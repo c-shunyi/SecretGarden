@@ -5,6 +5,8 @@ const authRouter = require("./routes/auth");
 const userRouter = require("./routes/user");
 const relationshipRouter = require("./routes/relationship");
 const billRouter = require("./routes/bill");
+const fileRouter = require("./routes/file");
+const checkinRouter = require("./routes/checkin");
 const { errorHandler } = require("./middlewares/error-handler");
 
 const app = express();
@@ -32,6 +34,17 @@ app.get("/", (req, res) => {
       "POST /api/v1/bills",
       "PATCH /api/v1/bills/:id",
       "DELETE /api/v1/bills/:id",
+      "POST /api/v1/files/upload",
+      "GET /api/v1/files",
+      "GET /api/v1/files/:id/content",
+      "DELETE /api/v1/files/:id",
+      "POST /api/v1/checkin-plans",
+      "GET /api/v1/checkin-plans",
+      "GET /api/v1/checkin-plans/:id",
+      "POST /api/v1/checkin-plans/join",
+      "POST /api/v1/checkin-plans/:id/invite",
+      "GET /api/v1/checkin-plans/:id/feed",
+      "POST /api/v1/checkin-plans/:id/posts",
     ],
   });
 });
@@ -41,6 +54,8 @@ app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/relationship", relationshipRouter);
 app.use("/api/v1/bills", billRouter);
+app.use("/api/v1/files", fileRouter);
+app.use("/api/v1/checkin-plans", checkinRouter);
 
 app.use((req, res) => {
   res.status(404).json({

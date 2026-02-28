@@ -1,6 +1,6 @@
 import { clearSession, sessionState } from '@/stores/session'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
 
 export async function request(path, options = {}) {
   const { method = 'GET', data, headers = {}, auth = true } = options
@@ -13,8 +13,12 @@ export async function request(path, options = {}) {
   }
 
   if (data !== undefined) {
-    requestHeaders['Content-Type'] = 'application/json'
-    init.body = JSON.stringify(data)
+    if (typeof FormData !== 'undefined' && data instanceof FormData) {
+      init.body = data
+    } else {
+      requestHeaders['Content-Type'] = 'application/json'
+      init.body = JSON.stringify(data)
+    }
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, init)

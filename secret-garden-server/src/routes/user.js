@@ -66,11 +66,22 @@ router.patch(
       params.push(birthday);
     }
 
-    if (Object.prototype.hasOwnProperty.call(req.body, "avatarFileId")) {
+        if (Object.prototype.hasOwnProperty.call(req.body, "avatarFileId")) {
       const avatarFileId = req.body.avatarFileId;
       if (avatarFileId !== null && (!Number.isInteger(avatarFileId) || avatarFileId <= 0)) {
-        throw new AppError(400, "INVALID_AVATAR_FILE_ID", "avatarFileId 必须是正整数或 null");
+        throw new AppError(400, "INVALID_AVATAR_FILE_ID", "avatarFileId must be positive integer or null");
       }
+
+      if (avatarFileId !== null) {
+        const fileRow = await queryOne(
+          "SELECT id FROM files WHERE id = ? AND user_id = ?",
+          [avatarFileId, req.user.id]
+        );
+        if (!fileRow) {
+          throw new AppError(400, "INVALID_AVATAR_FILE_ID", "avatarFileId must belong to current user");
+        }
+      }
+
       fields.push("avatar_file_id = ?");
       params.push(avatarFileId);
     }

@@ -4,6 +4,10 @@ import AuthView from '@/views/AuthView.vue'
 import HomeView from '@/views/HomeView.vue'
 import BillView from '@/views/BillView.vue'
 import UserCenterView from '@/views/UserCenterView.vue'
+import CheckinPlansView from '@/views/CheckinPlansView.vue'
+import CheckinPlanFeedView from '@/views/CheckinPlanFeedView.vue'
+import CheckinPlanDetailView from '@/views/CheckinPlanDetailView.vue'
+import CheckinPlanPunchView from '@/views/CheckinPlanPunchView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -28,6 +32,30 @@ const router = createRouter({
       path: '/bills',
       name: 'bills',
       component: BillView,
+      meta: { requiresAuth: true, showTabbar: false },
+    },
+    {
+      path: '/checkin',
+      name: 'checkin-plans',
+      component: CheckinPlansView,
+      meta: { requiresAuth: true, showTabbar: false },
+    },
+    {
+      path: '/checkin/:planId',
+      name: 'checkin-plan-feed',
+      component: CheckinPlanFeedView,
+      meta: { requiresAuth: true, showTabbar: false },
+    },
+    {
+      path: '/checkin/:planId/detail',
+      name: 'checkin-plan-detail',
+      component: CheckinPlanDetailView,
+      meta: { requiresAuth: true, showTabbar: false },
+    },
+    {
+      path: '/checkin/:planId/punch',
+      name: 'checkin-plan-punch',
+      component: CheckinPlanPunchView,
       meta: { requiresAuth: true, showTabbar: false },
     },
     {

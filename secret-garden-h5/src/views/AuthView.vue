@@ -18,11 +18,6 @@ const errorText = ref('')
 const title = computed(() => (mode.value === 'login' ? '登录 Secret Garden' : '注册 Secret Garden'))
 const buttonText = computed(() => (mode.value === 'login' ? '登录' : '注册并登录'))
 
-function switchMode(nextMode) {
-  mode.value = nextMode
-  errorText.value = ''
-}
-
 function validateForm() {
   const account = form.value.account.trim()
   const password = form.value.password
@@ -66,42 +61,36 @@ async function submit() {
       <h1 class="title">{{ title }}</h1>
       <p class="subtitle">和 Ta 一起记录生活</p>
 
-      <div class="mode-tabs">
-        <button
-          type="button"
-          class="mode-btn"
-          :class="{ active: mode === 'login' }"
-          @click="switchMode('login')"
-        >
-          登录
-        </button>
-        <button
-          type="button"
-          class="mode-btn"
-          :class="{ active: mode === 'register' }"
-          @click="switchMode('register')"
-        >
-          注册
-        </button>
-      </div>
+      <van-tabs v-model:active="mode" class="mode-tabs">
+        <van-tab title="登录" name="login" />
+        <van-tab title="注册" name="register" />
+      </van-tabs>
 
-      <form class="form" @submit.prevent="submit">
-        <label class="field">
-          <span>账号</span>
-          <input v-model.trim="form.account" type="text" placeholder="4-20 位字母/数字/下划线" />
-        </label>
-
-        <label class="field">
-          <span>密码</span>
-          <input v-model="form.password" type="password" placeholder="6-32 位密码" />
-        </label>
+      <van-form class="form" @submit="submit">
+        <van-cell-group inset>
+          <van-field
+            v-model.trim="form.account"
+            name="account"
+            label="账号"
+            placeholder="4-20 位字母/数字/下划线"
+          />
+          <van-field
+            v-model="form.password"
+            name="password"
+            type="password"
+            label="密码"
+            placeholder="6-32 位密码"
+          />
+        </van-cell-group>
 
         <p v-if="errorText" class="error">{{ errorText }}</p>
 
-        <button class="submit-btn" :disabled="loading" type="submit">
-          {{ loading ? '处理中...' : buttonText }}
-        </button>
-      </form>
+        <div class="submit-wrap">
+          <van-button round block type="primary" native-type="submit" :loading="loading">
+            {{ buttonText }}
+          </van-button>
+        </div>
+      </van-form>
     </section>
   </main>
 </template>
@@ -133,57 +122,17 @@ async function submit() {
 }
 
 .subtitle {
-  margin: 8px 0 20px;
+  margin: 8px 0 14px;
   color: #4b6b4f;
 }
 
 .mode-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.mode-btn {
-  flex: 1;
-  height: 40px;
-  border: 1px solid #c8dfbc;
-  border-radius: 10px;
-  background: #f5fbf0;
-  color: #35553a;
-  font-size: 14px;
-}
-
-.mode-btn.active {
-  background: #2f8041;
-  border-color: #2f8041;
-  color: #fff;
+  margin-bottom: 12px;
 }
 
 .form {
   display: grid;
   gap: 12px;
-}
-
-.field {
-  display: grid;
-  gap: 6px;
-  color: #35553a;
-  font-size: 14px;
-}
-
-.field input {
-  width: 100%;
-  height: 42px;
-  border: 1px solid #d2dfd4;
-  border-radius: 10px;
-  padding: 0 12px;
-  font-size: 14px;
-  outline: none;
-  background: #fff;
-}
-
-.field input:focus {
-  border-color: #2f8041;
 }
 
 .error {
@@ -192,17 +141,16 @@ async function submit() {
   color: #b62039;
 }
 
-.submit-btn {
-  margin-top: 4px;
-  height: 44px;
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  color: #fff;
-  background: linear-gradient(90deg, #2f8041 0%, #3a9854 100%);
+.submit-wrap {
+  padding: 0 12px;
 }
 
-.submit-btn:disabled {
-  opacity: 0.6;
+:deep(.van-tabs__line) {
+  background: #2f8041;
+}
+
+:deep(.van-button--primary) {
+  background: linear-gradient(90deg, #2f8041 0%, #3a9854 100%);
+  border-color: #2f8041;
 }
 </style>

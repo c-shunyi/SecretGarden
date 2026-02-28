@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { showConfirmDialog } from 'vant'
 import { createBillApi, deleteBillApi, listBillsApi } from '@/services/bill-api'
 
 const expenseCategories = ['餐饮', '交通', '购物', '娱乐', '居家', '医疗', '其他']
@@ -30,6 +31,36 @@ const form = ref({
 const currentCategories = computed(() =>
   form.value.billType === 'EXPENSE' ? expenseCategories : incomeCategories
 )
+const showCategoryPicker = ref(false)
+const categoryColumns = computed(() =>
+  currentCategories.value.map((name) => ({ text: name, value: name }))
+)
+const showMonthPicker = ref(false)
+const showBillDateCalendar = ref(false)
+const monthRangeStart = 2020
+const monthRangeEnd = new Date().getFullYear() + 5
+const monthColumns = computed(() => {
+  const [yearPart, monthPart] = month.value.split('-')
+  const currentYear = Number(yearPart) || new Date().getFullYear()
+  const currentMonth = Number(monthPart) || new Date().getMonth() + 1
+
+  return [
+    {
+      values: Array.from({ length: monthRangeEnd - monthRangeStart + 1 }, (_, idx) => {
+        const year = monthRangeStart + idx
+        return { text: String(year), value: String(year) }
+      }),
+      defaultIndex: Math.min(Math.max(currentYear - monthRangeStart, 0), monthRangeEnd - monthRangeStart),
+    },
+    {
+      values: Array.from({ length: 12 }, (_, idx) => {
+        const monthValue = String(idx + 1).padStart(2, '0')
+        return { text: monthValue, value: monthValue }
+      }),
+      defaultIndex: Math.min(Math.max(currentMonth - 1, 0), 11),
+    },
+  ]
+})
 
 function resetTip() {
   errorText.value = ''
@@ -40,6 +71,77 @@ function ensureCategoryInRange() {
   if (!currentCategories.value.includes(form.value.category)) {
     form.value.category = currentCategories.value[0]
   }
+}
+
+function openCategoryPicker() {
+  showCategoryPicker.value = true
+}
+
+function closeCategoryPicker() {
+  showCategoryPicker.value = false
+}
+
+function onCategoryConfirm(payload) {
+  const next =
+    payload?.selectedValues?.[0] ||
+    payload?.selectedOptions?.[0]?.value ||
+    payload?.selectedOptions?.[0]?.text
+  if (typeof next === 'string' && next) {
+    form.value.category = next
+  }
+  closeCategoryPicker()
+}
+
+function openMonthPicker() {
+  showMonthPicker.value = true
+}
+
+function closeMonthPicker() {
+  showMonthPicker.value = false
+}
+
+function openBillDateCalendar() {
+  showBillDateCalendar.value = true
+}
+
+function closeBillDateCalendar() {
+  showBillDateCalendar.value = false
+}
+
+function formatDate(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function onBillDateConfirm(value) {
+  const selectedDate = Array.isArray(value) ? value[0] : value
+  if (selectedDate instanceof Date && !Number.isNaN(selectedDate.getTime())) {
+    form.value.billDate = formatDate(selectedDate)
+  }
+  closeBillDateCalendar()
+}
+
+async function onMonthConfirm(payload) {
+  const yearValue =
+    payload?.selectedValues?.[0] ||
+    payload?.selectedOptions?.[0]?.value ||
+    payload?.selectedOptions?.[0]?.text
+  const monthValue =
+    payload?.selectedValues?.[1] ||
+    payload?.selectedOptions?.[1]?.value ||
+    payload?.selectedOptions?.[1]?.text
+
+  if (typeof yearValue === 'string' && typeof monthValue === 'string') {
+    const normalized = `${yearValue.replace(/\D/g, '')}-${monthValue.replace(/\D/g, '').padStart(2, '0')}`
+    if (/^\d{4}-\d{2}$/.test(normalized) && normalized !== month.value) {
+      month.value = normalized
+      await loadBills()
+    }
+  }
+
+  closeMonthPicker()
 }
 
 watch(
@@ -100,7 +202,17 @@ async function submitBill() {
 
 async function removeBill(id) {
   if (deletingId.value) return
-  if (!window.confirm('确认删除该账单吗？')) return
+  try {
+        await showConfirmDialog({
+      title: '确认',
+      message: '确认删除该账单吗？',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
+
   deletingId.value = id
   resetTip()
   try {
@@ -139,44 +251,73 @@ onMounted(() => {
         </div>
       </div>
 
-      <form class="form" @submit.prevent="submitBill">
-        <div class="row">
-          <label class="field">
-            <span>类型</span>
-            <select v-model="form.billType">
-              <option value="EXPENSE">支出</option>
-              <option value="INCOME">收入</option>
-            </select>
-          </label>
+      <van-form class="form" @submit="submitBill">
+        <van-cell-group inset>
+          <van-field label="类型">
+            <template #input>
+              <van-radio-group v-model="form.billType" direction="horizontal">
+                <van-radio name="EXPENSE">支出</van-radio>
+                <van-radio name="INCOME">收入</van-radio>
+              </van-radio-group>
+            </template>
+          </van-field>
 
-          <label class="field">
-            <span>分类</span>
-            <select v-model="form.category">
-              <option v-for="item in currentCategories" :key="item" :value="item">{{ item }}</option>
-            </select>
-          </label>
+          <van-field label="分类">
+            <template #input>
+              <div class="category-trigger" @click="openCategoryPicker">
+                <span class="category-value">{{ form.category }}</span>
+                <span class="category-arrow">></span>
+              </div>
+            </template>
+          </van-field>
+
+          <van-field
+            v-model.trim="form.amount"
+            type="number"
+            label="金额"
+            name="amount"
+            placeholder="0.00"
+          />
+
+                    <van-field
+            :model-value="form.billDate"
+            is-link
+            readonly
+            label="日期"
+            placeholder="请选择日期"
+            @click="openBillDateCalendar"
+          />
+
+                              <van-field
+            v-model.trim="form.note"
+            type="text"
+            label="备注"
+            maxlength="255"
+            placeholder="可选"
+          />
+        </van-cell-group>
+
+        <van-popup v-model:show="showCategoryPicker" round position="bottom">
+          <van-picker
+            :columns="categoryColumns"
+            @cancel="closeCategoryPicker"
+            @confirm="onCategoryConfirm"
+          />
+                </van-popup>
+
+        <van-calendar
+          v-model:show="showBillDateCalendar"
+          type="single"
+          @confirm="onBillDateConfirm"
+          @cancel="closeBillDateCalendar"
+        />
+
+        <div class="submit-wrap">
+                    <van-button round block type="primary" native-type="submit" :loading="saving">
+            记一笔
+          </van-button>
         </div>
-
-        <div class="row">
-          <label class="field">
-            <span>金额</span>
-            <input v-model.trim="form.amount" type="number" min="0.01" step="0.01" placeholder="0.00" />
-          </label>
-          <label class="field">
-            <span>日期</span>
-            <input v-model="form.billDate" type="date" />
-          </label>
-        </div>
-
-        <label class="field">
-          <span>备注</span>
-          <input v-model.trim="form.note" type="text" maxlength="255" placeholder="可选" />
-        </label>
-
-        <button class="primary-btn" type="submit" :disabled="saving">
-          {{ saving ? '提交中...' : '记一笔' }}
-        </button>
-      </form>
+      </van-form>
 
       <p v-if="errorText" class="tip error">{{ errorText }}</p>
       <p v-if="successText" class="tip success">{{ successText }}</p>
@@ -187,32 +328,52 @@ onMounted(() => {
         <h3>账单列表</h3>
         <label class="month-field">
           <span>月份</span>
-          <input v-model="month" type="month" @change="loadBills" />
+          <button type="button" class="month-trigger" @click="openMonthPicker">
+            <span>{{ month }}</span>
+            <span class="month-arrow">></span>
+          </button>
         </label>
       </div>
 
-      <p v-if="loading" class="empty">加载中...</p>
-      <p v-else-if="!list.length" class="empty">暂无账单</p>
+      <div v-if="loading" class="loading-wrap">
+        <van-loading size="24px">加载�?..</van-loading>
+      </div>
+      <van-empty v-else-if="!list.length" description="暂无账单" />
 
-      <ul v-else class="bill-list">
-        <li v-for="item in list" :key="item.id" class="bill-item">
-          <div class="bill-main">
+      <van-cell-group v-else inset>
+        <van-cell v-for="item in list" :key="item.id" class="bill-cell" center>
+          <template #title>
             <p class="line-1">
               <strong>{{ item.category }}</strong>
-              <span class="type">{{ item.billType === 'EXPENSE' ? '支出' : '收入' }}</span>
+              <van-tag :type="item.billType === 'EXPENSE' ? 'danger' : 'success'" plain>
+                {{ item.billType === 'EXPENSE' ? '支出' : '收入' }}
+              </van-tag>
             </p>
             <p class="line-2">{{ item.billDate }} {{ item.note || '' }}</p>
-          </div>
-          <div class="bill-side">
-            <strong :class="item.billType === 'EXPENSE' ? 'expense-text' : 'income-text'">
-              {{ item.billType === 'EXPENSE' ? '-' : '+' }}{{ Number(item.amount).toFixed(2) }}
-            </strong>
-            <button class="delete-btn" :disabled="deletingId === item.id" @click="removeBill(item.id)">
-              {{ deletingId === item.id ? '删除中...' : '删除' }}
-            </button>
-          </div>
-        </li>
-      </ul>
+          </template>
+
+          <template #value>
+            <div class="bill-side">
+              <strong :class="item.billType === 'EXPENSE' ? 'expense-text' : 'income-text'">
+                {{ item.billType === 'EXPENSE' ? '-' : '+' }}{{ Number(item.amount).toFixed(2) }}
+              </strong>
+              <van-button
+                size="mini"
+                type="danger"
+                plain
+                :loading="deletingId === item.id"
+                @click.stop="removeBill(item.id)"
+              >
+                删除
+              </van-button>
+            </div>
+          </template>
+        </van-cell>
+      </van-cell-group>
+
+      <van-popup v-model:show="showMonthPicker" round position="bottom">
+        <van-picker :columns="monthColumns" @cancel="closeMonthPicker" @confirm="onMonthConfirm" />
+              </van-popup>
     </section>
   </main>
 </template>
@@ -281,56 +442,42 @@ onMounted(() => {
   gap: 10px;
 }
 
-.row {
-  display: grid;
-  gap: 10px;
-}
-
-@media (min-width: 680px) {
-  .row {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.field {
-  display: grid;
-  gap: 6px;
-}
-
-.field span {
-  color: #435646;
-  font-size: 14px;
-}
-
-.field input,
-.field select {
+.native-input {
   width: 100%;
   border: 1px solid #d0ddd3;
-  border-radius: 10px;
-  height: 40px;
-  padding: 0 12px;
+  border-radius: 8px;
+  height: 32px;
+  padding: 0 8px;
   font-size: 14px;
-  outline: none;
   background: #fff;
 }
 
-.field input:focus,
-.field select:focus {
-  border-color: #2f8041;
+.category-trigger {
+  width: 100%;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid #d0ddd3;
+  border-radius: 8px;
+  padding: 0 8px;
+  background: #fff;
+  cursor: pointer;
 }
 
-.primary-btn {
-  margin-top: 4px;
-  height: 42px;
-  border: none;
-  border-radius: 10px;
-  color: #fff;
-  background: linear-gradient(90deg, #2f8041 0%, #3d9b57 100%);
-  font-size: 15px;
+.category-value {
+  color: #1f2f1f;
 }
 
-.primary-btn:disabled {
-  opacity: 0.6;
+.category-arrow {
+  color: #758a79;
+  font-size: 12px;
+}
+
+.submit-wrap {
+  margin-top: 12px;
+  padding: 0 12px;
 }
 
 .tip {
@@ -367,38 +514,31 @@ onMounted(() => {
   font-size: 13px;
 }
 
-.month-field input {
+.month-trigger {
+  height: 32px;
   border: 1px solid #d0ddd3;
   border-radius: 8px;
-  height: 34px;
-  padding: 0 10px;
+  padding: 0 8px;
   background: #fff;
-}
-
-.empty {
-  margin: 0;
-  color: #5c6f60;
-}
-
-.bill-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
+  color: #1f2f1f;
 }
 
-.bill-item {
-  border: 1px solid #dfebe2;
-  border-radius: 10px;
-  padding: 10px;
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
+.month-arrow {
+  color: #758a79;
+  font-size: 12px;
 }
 
-.bill-main {
-  min-width: 0;
+.loading-wrap {
+  padding: 20px 0;
+  display: grid;
+  place-items: center;
+}
+
+.bill-cell :deep(.van-cell__value) {
+  flex: 0 0 auto;
 }
 
 .line-1 {
@@ -406,11 +546,6 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-}
-
-.type {
-  font-size: 12px;
-  color: #5a6f5d;
 }
 
 .line-2 {
@@ -435,17 +570,9 @@ onMounted(() => {
   color: #b42d43;
 }
 
-.delete-btn {
-  border: 1px solid #e7cad1;
-  background: #fff5f7;
-  color: #a52a3f;
-  border-radius: 8px;
-  height: 28px;
-  padding: 0 8px;
-  font-size: 12px;
-}
-
-.delete-btn:disabled {
-  opacity: 0.6;
+:deep(.van-button--primary) {
+  background: linear-gradient(90deg, #2f8041 0%, #3d9b57 100%);
+  border-color: #2f8041;
 }
 </style>
+

@@ -39,4 +39,38 @@ DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=123456
 DB_NAME=secret_garden
+FILE_STORAGE_ROOT=./storage
+FILE_MAX_SIZE_MB=20
 ```
+
+## File upload API
+
+- `POST /api/v1/files/upload`
+  - Content-Type: `multipart/form-data`
+  - Field name: `file`
+  - Auth: Bearer token required
+- `GET /api/v1/files?limit=20`
+- `GET /api/v1/files/:id/content`
+- `DELETE /api/v1/files/:id`
+
+Upload files are saved under:
+
+- `${FILE_STORAGE_ROOT}/users/<userId>/...`
+
+This means each user has an isolated file space based on their user id.
+
+## Checkin plan API
+
+- `POST /api/v1/checkin-plans`
+  - body: `{ "name": "早起30天", "description": "可选说明" }`
+- `GET /api/v1/checkin-plans`
+- `GET /api/v1/checkin-plans/:id`
+- `POST /api/v1/checkin-plans/join`
+  - body: `{ "inviteCode": "AB12CD34" }`
+- `POST /api/v1/checkin-plans/:id/invite`
+  - only owner can regenerate invite code
+- `GET /api/v1/checkin-plans/:id/feed?limit=20&beforeId=100`
+  - newest first, like timeline feed
+- `POST /api/v1/checkin-plans/:id/posts`
+  - body: `{ "content": "今天完成了跑步", "imageFileIds": [11, 12] }`
+  - supports text + up to 9 images
