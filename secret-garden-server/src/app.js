@@ -3,7 +3,6 @@ const cors = require("cors");
 const healthRouter = require("./routes/health");
 const authRouter = require("./routes/auth");
 const userRouter = require("./routes/user");
-const relationshipRouter = require("./routes/relationship");
 const billRouter = require("./routes/bill");
 const fileRouter = require("./routes/file");
 const checkinRouter = require("./routes/checkin");
@@ -26,10 +25,6 @@ app.get("/", (req, res) => {
       "POST /api/v1/auth/logout",
       "GET /api/v1/users/me",
       "PATCH /api/v1/users/me",
-      "GET /api/v1/relationship/status",
-      "POST /api/v1/relationship/invite",
-      "POST /api/v1/relationship/bind",
-      "POST /api/v1/relationship/unbind",
       "GET /api/v1/bills",
       "POST /api/v1/bills",
       "PATCH /api/v1/bills/:id",
@@ -52,7 +47,6 @@ app.get("/", (req, res) => {
 app.use("/api/health", healthRouter);
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/users", userRouter);
-app.use("/api/v1/relationship", relationshipRouter);
 app.use("/api/v1/bills", billRouter);
 app.use("/api/v1/files", fileRouter);
 app.use("/api/v1/checkin-plans", checkinRouter);

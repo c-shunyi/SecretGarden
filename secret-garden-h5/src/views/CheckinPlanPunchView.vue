@@ -26,6 +26,13 @@ function showTip(text, type = 'ok') {
   tipType.value = type
 }
 
+function formatCheckinDate(value = new Date()) {
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, '0')
+  const day = String(value.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function toAbsoluteUrl(url) {
   if (!url) return ''
   const absoluteUrl = /^https?:\/\//i.test(url) ? url : `${API_BASE_URL}${url}`
@@ -46,6 +53,7 @@ async function initPage() {
     showTip('计划ID非法', 'error')
     return
   }
+
   loading.value = true
   showTip('')
   try {
@@ -94,7 +102,8 @@ async function onPickImages(event) {
 }
 
 async function publishPost() {
-  if (posting.value) return
+  if (posting.value || uploading.value) return
+
   const content = postForm.value.content.trim()
   const imageFileIds = selectedImages.value.map((item) => item.id)
   if (!content && !imageFileIds.length) {
@@ -114,6 +123,25 @@ async function publishPost() {
     showTip('打卡成功，返回动态页可查看')
   } catch (error) {
     showTip(error.message || '发布打卡失败', 'error')
+  } finally {
+    posting.value = false
+  }
+}
+
+async function quickPunch() {
+  if (posting.value || uploading.value) return
+
+  const content = `${formatCheckinDate()}打卡`
+  posting.value = true
+  showTip('')
+  try {
+    await createCheckinPostApi(planId.value, {
+      content,
+      imageFileIds: [],
+    })
+    showTip('一键打卡成功，返回动态页可查看')
+  } catch (error) {
+    showTip(error.message || '一键打卡失败', 'error')
   } finally {
     posting.value = false
   }
@@ -181,6 +209,9 @@ onMounted(() => {
       <div class="actions">
         <button class="primary-btn" :disabled="posting || uploading" @click="publishPost">
           {{ posting ? '发布中...' : '立即打卡' }}
+        </button>
+        <button class="ghost-btn" :disabled="posting || uploading" @click="quickPunch">
+          {{ posting ? '提交中...' : '一键打卡' }}
         </button>
       </div>
     </section>
@@ -315,6 +346,9 @@ onMounted(() => {
 
 .actions {
   margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .primary-btn,

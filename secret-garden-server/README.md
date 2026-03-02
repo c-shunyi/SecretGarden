@@ -16,15 +16,26 @@ npm run dev
 
 - `GET /`: basic service info
 - `GET /api/health`: health check
-- `POST /api/v1/auth/register`: 注册
-- `POST /api/v1/auth/login`: 登录
-- `POST /api/v1/auth/logout`: 退出登录
-- `GET /api/v1/users/me`: 获取个人资料
-- `PATCH /api/v1/users/me`: 更新个人资料
-- `GET /api/v1/relationship/status`: 绑定状态
-- `POST /api/v1/relationship/invite`: 生成邀请码
-- `POST /api/v1/relationship/bind`: 绑定伴侣
-- `POST /api/v1/relationship/unbind`: 解绑伴侣
+- `POST /api/v1/auth/register`: register
+- `POST /api/v1/auth/login`: login
+- `POST /api/v1/auth/logout`: logout
+- `GET /api/v1/users/me`: get my profile
+- `PATCH /api/v1/users/me`: update my profile
+- `GET /api/v1/bills`: list bills
+- `POST /api/v1/bills`: create bill
+- `PATCH /api/v1/bills/:id`: update bill
+- `DELETE /api/v1/bills/:id`: delete bill
+- `POST /api/v1/files/upload`: upload file
+- `GET /api/v1/files`: list files
+- `GET /api/v1/files/:id/content`: get file content
+- `DELETE /api/v1/files/:id`: delete file
+- `POST /api/v1/checkin-plans`: create checkin plan
+- `GET /api/v1/checkin-plans`: list checkin plans
+- `GET /api/v1/checkin-plans/:id`: checkin plan detail
+- `POST /api/v1/checkin-plans/join`: join checkin plan by invite code
+- `POST /api/v1/checkin-plans/:id/invite`: regenerate checkin invite code
+- `GET /api/v1/checkin-plans/:id/feed`: checkin feed
+- `POST /api/v1/checkin-plans/:id/posts`: create checkin post
 
 ## Environment variables
 
@@ -62,7 +73,7 @@ This means each user has an isolated file space based on their user id.
 ## Checkin plan API
 
 - `POST /api/v1/checkin-plans`
-  - body: `{ "name": "早起30天", "description": "可选说明" }`
+  - body: `{ "name": "Morning 30 days", "description": "optional" }`
 - `GET /api/v1/checkin-plans`
 - `GET /api/v1/checkin-plans/:id`
 - `POST /api/v1/checkin-plans/join`
@@ -72,5 +83,5 @@ This means each user has an isolated file space based on their user id.
 - `GET /api/v1/checkin-plans/:id/feed?limit=20&beforeId=100`
   - newest first, like timeline feed
 - `POST /api/v1/checkin-plans/:id/posts`
-  - body: `{ "content": "今天完成了跑步", "imageFileIds": [11, 12] }`
+  - body: `{ "content": "finished running", "imageFileIds": [11, 12] }`
   - supports text + up to 9 images

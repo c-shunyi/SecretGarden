@@ -144,6 +144,26 @@ function parseFileId(value) {
   return id;
 }
 
+async function canReadFile(row, userId) {
+  if (Number(row.user_id) === Number(userId)) {
+    return true;
+  }
+
+  const sharedByCheckin = await queryOne(
+    `
+      SELECT cpi.file_id
+      FROM checkin_post_images cpi
+      JOIN checkin_posts cp ON cp.id = cpi.post_id
+      JOIN checkin_plan_members m ON m.plan_id = cp.plan_id
+      WHERE cpi.file_id = ? AND m.user_id = ?
+      LIMIT 1
+    `,
+    [row.id, userId]
+  );
+
+  return Boolean(sharedByCheckin);
+}
+
 function authFromQueryToken(req, res, next) {
   const authorization = req.headers.authorization || "";
   if (authorization.startsWith("Bearer ")) {
@@ -244,12 +264,17 @@ router.get(
       `
         SELECT id, user_id, original_name, mime_type, size_bytes, storage_path
         FROM files
-        WHERE id = ? AND user_id = ?
+        WHERE id = ?
       `,
-      [id, req.user.id]
+      [id]
     );
 
     if (!row) {
+      throw new AppError(404, "FILE_NOT_FOUND", "File not found");
+    }
+
+    const canRead = await canReadFile(row, req.user.id);
+    if (!canRead) {
       throw new AppError(404, "FILE_NOT_FOUND", "File not found");
     }
 
