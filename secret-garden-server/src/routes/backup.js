@@ -149,16 +149,78 @@ async function buildBackupPayload() {
   };
 }
 
-async function addStorageFilesToZip(zip, fileRows) {
+async function splitFileRowsByStorageExistence(fileRows) {
+  const validRows = [];
+  const missingRows = [];
+
   for (const row of fileRows || []) {
     const storagePath = normalizeStoragePath(row.storage_path);
     const absolutePath = resolveInside(storageRootDir, storagePath);
     const exists = await pathExists(absolutePath);
+
     if (!exists) {
-      throw new AppError(500, "BACKUP_FILE_MISSING", `storage file not found: ${storagePath}`);
+      missingRows.push({
+        id: Number(row.id),
+        storagePath,
+      });
+      continue;
     }
 
-    const content = await fsPromises.readFile(absolutePath);
+    validRows.push({
+      ...row,
+      storage_path: storagePath,
+    });
+  }
+
+  return { validRows, missingRows };
+}
+
+function pruneMissingFilesFromPayload(payload, missingRows) {
+  if (!missingRows?.length) return;
+
+  const missingIdSet = new Set(missingRows.map((item) => Number(item.id)));
+
+  payload.tables.files = (payload.tables.files || []).filter(
+    (row) => !missingIdSet.has(Number(row.id))
+  );
+
+  payload.tables.checkin_post_images = (payload.tables.checkin_post_images || []).filter(
+    (row) => !missingIdSet.has(Number(row.file_id))
+  );
+
+  payload.tables.users = (payload.tables.users || []).map((row) => {
+    if (missingIdSet.has(Number(row.avatar_file_id))) {
+      return {
+        ...row,
+        avatar_file_id: null,
+      };
+    }
+    return row;
+  });
+
+  payload.warnings = {
+    ...(payload.warnings || {}),
+    missingFiles: missingRows,
+  };
+}
+
+async function addStorageFilesToZip(zip, fileRows) {
+  const seenPaths = new Set();
+  for (const row of fileRows || []) {
+    const storagePath = normalizeStoragePath(row.storage_path);
+    if (seenPaths.has(storagePath)) continue;
+    seenPaths.add(storagePath);
+
+    const absolutePath = resolveInside(storageRootDir, storagePath);
+    let content;
+    try {
+      content = await fsPromises.readFile(absolutePath);
+    } catch (error) {
+      if (error?.code === "ENOENT") {
+        throw new AppError(409, "BACKUP_FILE_MISSING", `storage file not found: ${storagePath}`);
+      }
+      throw error;
+    }
     zip.addFile(path.posix.join("storage", storagePath), content);
   }
 }
@@ -292,10 +354,31 @@ router.get(
     ensureBackupPermission(req);
 
     const payload = await buildBackupPayload();
+    const { missingRows } = await splitFileRowsByStorageExistence(payload.tables.files || []);
+    pruneMissingFilesFromPayload(payload, missingRows);
+
     const zip = new AdmZip();
 
     zip.addFile("backup.json", Buffer.from(JSON.stringify(payload, null, 2), "utf8"));
     await addStorageFilesToZip(zip, payload.tables.files || []);
+
+    if (missingRows.length) {
+      zip.addFile(
+        "backup-warnings.json",
+        Buffer.from(
+          JSON.stringify(
+            {
+              message: "Some file records were skipped because physical files were missing.",
+              missingFiles: missingRows,
+            },
+            null,
+            2
+          ),
+          "utf8"
+        )
+      );
+      res.setHeader("X-Backup-Warning-Count", String(missingRows.length));
+    }
 
     const buffer = zip.toBuffer();
     const stamp = new Date().toISOString().replace(/[-:TZ.]/g, "").slice(0, 14);
