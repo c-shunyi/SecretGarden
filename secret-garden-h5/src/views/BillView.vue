@@ -224,7 +224,7 @@ watch(
 )
 
 async function loadBills(reset = false) {
-  if (loading.value || loadingMore.value) return
+  if (loading.value) return
   if (!reset && !hasMore.value) return
 
   const page = reset ? 1 : nextPage.value
@@ -232,11 +232,14 @@ async function loadBills(reset = false) {
 
   if (isFirstPage) {
     loading.value = true
+    loadingMore.value = false
     list.value = []
     nextPage.value = 1
     hasMore.value = true
   } else {
-    loadingMore.value = true
+    if (!loadingMore.value) {
+      loadingMore.value = true
+    }
   }
 
   if (reset) {
