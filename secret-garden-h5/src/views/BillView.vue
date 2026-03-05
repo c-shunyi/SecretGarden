@@ -353,7 +353,7 @@ onMounted(() => {
           <span>{{ TEXT.month }}</span>
           <button type="button" class="month-trigger" @click="openMonthPicker">
             <span>{{ month }}</span>
-            <span class="month-arrow">></span>
+            <van-icon name="arrow" class="month-arrow" />
           </button>
         </label>
       </div>
@@ -426,14 +426,16 @@ onMounted(() => {
     </section>
 
     <button type="button" class="fab-button" @click="openAddPopup" :aria-label="TEXT.addBill">
-      +
+      <van-icon name="plus" class="fab-icon" />
     </button>
 
     <van-popup v-model:show="showAddPopup" round position="center" class="add-popup">
       <div class="add-popup-body">
         <div class="add-popup-head">
           <h3>{{ TEXT.addBill }}</h3>
-          <button type="button" class="popup-close" @click="closeAddPopup">?</button>
+          <button type="button" class="popup-close" @click="closeAddPopup">
+            <van-icon name="cross" class="popup-close-icon" />
+          </button>
         </div>
 
         <van-form class="form" @submit="submitBill">
@@ -451,7 +453,7 @@ onMounted(() => {
               <template #input>
                 <div class="category-trigger" @click="openCategoryPicker">
                   <span class="category-value">{{ form.category }}</span>
-                  <span class="category-arrow">></span>
+                  <van-icon name="arrow" class="category-arrow" />
                 </div>
               </template>
             </van-field>
@@ -618,14 +620,19 @@ onMounted(() => {
   bottom: 90px;
   width: 56px;
   height: 56px;
+  display: grid;
+  place-items: center;
   border: none;
   border-radius: 50%;
   background: linear-gradient(90deg, #2f8041 0%, #3d9b57 100%);
   color: #fff;
-  font-size: 34px;
-  line-height: 1;
   box-shadow: 0 12px 24px rgba(47, 128, 65, 0.35);
   z-index: 100;
+}
+
+.fab-icon {
+  font-size: 28px;
+  line-height: 1;
 }
 
 :deep(.add-popup) {
@@ -653,11 +660,16 @@ onMounted(() => {
 .popup-close {
   width: 32px;
   height: 32px;
+  display: grid;
+  place-items: center;
   border: none;
   border-radius: 50%;
   background: #f0f4f1;
   color: #6a7d6d;
-  font-size: 20px;
+}
+
+.popup-close-icon {
+  font-size: 16px;
 }
 
 .form {

@@ -6,6 +6,7 @@ const userRouter = require("./routes/user");
 const billRouter = require("./routes/bill");
 const fileRouter = require("./routes/file");
 const checkinRouter = require("./routes/checkin");
+const backupRouter = require("./routes/backup");
 const { errorHandler } = require("./middlewares/error-handler");
 
 const app = express();
@@ -33,6 +34,8 @@ app.get("/", (req, res) => {
       "GET /api/v1/files",
       "GET /api/v1/files/:id/content",
       "DELETE /api/v1/files/:id",
+      "GET /api/v1/backup/export",
+      "POST /api/v1/backup/import",
       "POST /api/v1/checkin-plans",
       "GET /api/v1/checkin-plans",
       "GET /api/v1/checkin-plans/:id",
@@ -50,6 +53,7 @@ app.use("/api/v1/users", userRouter);
 app.use("/api/v1/bills", billRouter);
 app.use("/api/v1/files", fileRouter);
 app.use("/api/v1/checkin-plans", checkinRouter);
+app.use("/api/v1/backup", backupRouter);
 
 app.use((req, res) => {
   res.status(404).json({

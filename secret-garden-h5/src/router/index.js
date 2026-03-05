@@ -8,6 +8,7 @@ import CheckinPlansView from '@/views/CheckinPlansView.vue'
 import CheckinPlanFeedView from '@/views/CheckinPlanFeedView.vue'
 import CheckinPlanDetailView from '@/views/CheckinPlanDetailView.vue'
 import CheckinPlanPunchView from '@/views/CheckinPlanPunchView.vue'
+import HiddenVaultView from '@/views/HiddenVaultView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -63,6 +64,12 @@ const router = createRouter({
       name: 'mine',
       component: UserCenterView,
       meta: { requiresAuth: true, showTabbar: true },
+    },
+    {
+      path: '/hidden/vault',
+      name: 'hidden-vault',
+      component: HiddenVaultView,
+      meta: { requiresAuth: true, showTabbar: false },
     },
     {
       path: '/center',
