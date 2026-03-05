@@ -1,10 +1,10 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { showConfirmDialog } from 'vant'
-import { createBillApi, deleteBillApi, listBillsApi } from '@/services/bill-api'
+import { show确认Dialog } from 'vant'
+import { createBillApi, deleteBillApi, list账单列表Api } from '@/services/bill-api'
 
-const expenseCategories = ['Food', 'Transport', 'Shopping', 'Entertainment', 'Home', 'Medical', 'Other']
-const incomeCategories = ['Salary', 'Bonus', 'Investment', 'Refund', 'Other']
+const expenseCategories = ['餐饮', '交通', '购物', '娱乐', '居家', '医疗', 'Other']
+const incomeCategories = ['工资', '奖金', '理财', '退款', 'Other']
 
 const loading = ref(false)
 const loadingMore = ref(false)
@@ -13,7 +13,7 @@ const deletingId = ref(0)
 const errorText = ref('')
 const successText = ref('')
 
-const month = ref(new Date().toISOString().slice(0, 7))
+const month = ref(new 日期().toISOString().slice(0, 7))
 const list = ref([])
 const summary = ref({
   expense: 0,
@@ -26,34 +26,34 @@ const nextPage = ref(1)
 const hasMore = ref(true)
 
 const form = ref({
-  billType: 'EXPENSE',
+  bill类型: 'EXPENSE',
   category: expenseCategories[0],
   amount: '',
   note: '',
-  billDate: new Date().toISOString().slice(0, 10),
+  bill日期: new 日期().toISOString().slice(0, 10),
 })
 
 const currentCategories = computed(() =>
-  form.value.billType === 'EXPENSE' ? expenseCategories : incomeCategories
+  form.value.bill类型 === 'EXPENSE' ? expenseCategories : incomeCategories
 )
 const categoryColumns = computed(() =>
   currentCategories.value.map((name) => ({ text: name, value: name }))
 )
 
 const showAddPopup = ref(false)
-const showCategoryPicker = ref(false)
-const showMonthPicker = ref(false)
-const showBillDateCalendar = ref(false)
+const show分类Picker = ref(false)
+const show月份Picker = ref(false)
+const showBill日期Calendar = ref(false)
 
 const monthRangeStart = 2020
-const monthRangeEnd = new Date().getFullYear() + 5
-const billDateMin = new Date(monthRangeStart, 0, 1)
-const billDateMax = new Date()
+const monthRangeEnd = new 日期().getFullYear() + 5
+const bill日期Min = new 日期(monthRangeStart, 0, 1)
+const bill日期Max = new 日期()
 
 const monthColumns = computed(() => {
   const [yearPart, monthPart] = month.value.split('-')
-  const currentYear = Number(yearPart) || new Date().getFullYear()
-  const currentMonth = Number(monthPart) || new Date().getMonth() + 1
+  const currentYear = Number(yearPart) || new 日期().getFullYear()
+  const current月份 = Number(monthPart) || new 日期().get月份() + 1
 
   return [
     {
@@ -71,7 +71,7 @@ const monthColumns = computed(() => {
         const monthValue = String(idx + 1).padStart(2, '0')
         return { text: monthValue, value: monthValue }
       }),
-      defaultIndex: Math.min(Math.max(currentMonth - 1, 0), 11),
+      defaultIndex: Math.min(Math.max(current月份 - 1, 0), 11),
     },
   ]
 })
@@ -83,15 +83,15 @@ function resetTip() {
 
 function resetForm() {
   form.value = {
-    billType: 'EXPENSE',
+    bill类型: 'EXPENSE',
     category: expenseCategories[0],
     amount: '',
     note: '',
-    billDate: new Date().toISOString().slice(0, 10),
+    bill日期: new 日期().toISOString().slice(0, 10),
   }
 }
 
-function ensureCategoryInRange() {
+function ensure分类InRange() {
   if (!currentCategories.value.includes(form.value.category)) {
     form.value.category = currentCategories.value[0]
   }
@@ -99,7 +99,7 @@ function ensureCategoryInRange() {
 
 function openAddPopup() {
   resetTip()
-  ensureCategoryInRange()
+  ensure分类InRange()
   showAddPopup.value = true
 }
 
@@ -107,15 +107,15 @@ function closeAddPopup() {
   showAddPopup.value = false
 }
 
-function openCategoryPicker() {
-  showCategoryPicker.value = true
+function open分类Picker() {
+  show分类Picker.value = true
 }
 
-function closeCategoryPicker() {
-  showCategoryPicker.value = false
+function close分类Picker() {
+  show分类Picker.value = false
 }
 
-function onCategoryConfirm(payload) {
+function on分类确认(payload) {
   const next =
     payload?.selectedValues?.[0] ||
     payload?.selectedOptions?.[0]?.value ||
@@ -123,41 +123,41 @@ function onCategoryConfirm(payload) {
   if (typeof next === 'string' && next) {
     form.value.category = next
   }
-  closeCategoryPicker()
+  close分类Picker()
 }
 
-function openMonthPicker() {
-  showMonthPicker.value = true
+function open月份Picker() {
+  show月份Picker.value = true
 }
 
-function closeMonthPicker() {
-  showMonthPicker.value = false
+function close月份Picker() {
+  show月份Picker.value = false
 }
 
-function openBillDateCalendar() {
-  showBillDateCalendar.value = true
+function openBill日期Calendar() {
+  showBill日期Calendar.value = true
 }
 
-function closeBillDateCalendar() {
-  showBillDateCalendar.value = false
+function closeBill日期Calendar() {
+  showBill日期Calendar.value = false
 }
 
-function formatDate(date) {
+function format日期(date) {
   const year = date.getFullYear()
-  const monthValue = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
+  const monthValue = String(date.get月份() + 1).padStart(2, '0')
+  const day = String(date.get日期()).padStart(2, '0')
   return `${year}-${monthValue}-${day}`
 }
 
-function onBillDateConfirm(value) {
-  const selectedDate = Array.isArray(value) ? value[0] : value
-  if (selectedDate instanceof Date && !Number.isNaN(selectedDate.getTime())) {
-    form.value.billDate = formatDate(selectedDate)
+function onBill日期确认(value) {
+  const selected日期 = Array.isArray(value) ? value[0] : value
+  if (selected日期 instanceof 日期 && !Number.isNaN(selected日期.getTime())) {
+    form.value.bill日期 = format日期(selected日期)
   }
-  closeBillDateCalendar()
+  closeBill日期Calendar()
 }
 
-async function onMonthConfirm(payload) {
+async function on月份确认(payload) {
   const yearValue =
     payload?.selectedValues?.[0] ||
     payload?.selectedOptions?.[0]?.value ||
@@ -173,21 +173,21 @@ async function onMonthConfirm(payload) {
       .padStart(2, '0')}`
     if (/^\d{4}-\d{2}$/.test(normalized) && normalized !== month.value) {
       month.value = normalized
-      await loadBills(true)
+      await load账单列表(true)
     }
   }
 
-  closeMonthPicker()
+  close月份Picker()
 }
 
 watch(
-  () => form.value.billType,
+  () => form.value.bill类型,
   () => {
-    ensureCategoryInRange()
+    ensure分类InRange()
   }
 )
 
-async function loadBills(reset = false) {
+async function load账单列表(reset = false) {
   if (loading.value || loadingMore.value) return
   if (!reset && !hasMore.value) return
 
@@ -208,7 +208,7 @@ async function loadBills(reset = false) {
   }
 
   try {
-    const response = await listBillsApi({
+    const response = await list账单列表Api({
       month: month.value,
       page,
       pageSize: BILL_PAGE_SIZE,
@@ -223,7 +223,7 @@ async function loadBills(reset = false) {
       typeof serverHasMore === 'boolean' ? serverHasMore : rows.length >= BILL_PAGE_SIZE
     nextPage.value = page + 1
   } catch (error) {
-    errorText.value = error.message || 'Failed to load bills'
+    errorText.value = error.message || '获取账单失败'
   } finally {
     if (isFirstPage) {
       loading.value = false
@@ -232,25 +232,25 @@ async function loadBills(reset = false) {
   }
 }
 
-function loadMoreBills() {
-  return loadBills(false)
+function loadMore账单列表() {
+  return load账单列表(false)
 }
 
 function buildPayload() {
   const amount = Number(form.value.amount)
   if (!Number.isFinite(amount) || amount <= 0) {
-    throw new Error('Amount must be greater than 0')
+    throw new Error('金额必须大于 0')
   }
-  if (!form.value.billDate) {
-    throw new Error('Please choose a bill date')
+  if (!form.value.bill日期) {
+    throw new Error('请选择记账日期')
   }
 
   return {
-    billType: form.value.billType,
+    bill类型: form.value.bill类型,
     category: form.value.category,
     amount,
     note: form.value.note.trim() || null,
-    billDate: form.value.billDate,
+    bill日期: form.value.bill日期,
   }
 }
 
@@ -262,12 +262,12 @@ async function submitBill() {
   try {
     const payload = buildPayload()
     await createBillApi(payload)
-    successText.value = 'Saved'
+    successText.value = '记账成功'
     resetForm()
     closeAddPopup()
-    await loadBills(true)
+    await load账单列表(true)
   } catch (error) {
-    errorText.value = error.message || 'Save failed'
+    errorText.value = error.message || '记账失败'
   } finally {
     saving.value = false
   }
@@ -277,10 +277,10 @@ async function removeBill(id) {
   if (deletingId.value) return
 
   try {
-    await showConfirmDialog({
-      title: 'Confirm',
-      message: 'Delete this bill?',
-      confirmButtonText: 'Delete',
+    await show确认Dialog({
+      title: '确认',
+      message: '确认删除这条账单吗？',
+      confirmButtonText: '删除',
       cancelButtonText: 'Cancel',
     })
   } catch {
@@ -291,17 +291,17 @@ async function removeBill(id) {
   resetTip()
   try {
     await deleteBillApi(id)
-    successText.value = 'Deleted'
-    await loadBills(true)
+    successText.value = '删除d'
+    await load账单列表(true)
   } catch (error) {
-    errorText.value = error.message || 'Delete failed'
+    errorText.value = error.message || '删除失败'
   } finally {
     deletingId.value = 0
   }
 }
 
 onMounted(() => {
-  loadBills(true)
+  load账单列表(true)
 })
 </script>
 
@@ -309,10 +309,10 @@ onMounted(() => {
   <main class="page">
     <section class="panel overview-panel">
       <div class="overview-head">
-        <h2 class="panel-title">Overview</h2>
+        <h2 class="panel-title">数据大纲</h2>
         <label class="month-field">
-          <span>Month</span>
-          <button type="button" class="month-trigger" @click="openMonthPicker">
+          <span>月份</span>
+          <button type="button" class="month-trigger" @click="open月份Picker">
             <span>{{ month }}</span>
             <span class="month-arrow">></span>
           </button>
@@ -321,15 +321,15 @@ onMounted(() => {
 
       <div class="summary-grid">
         <div class="summary-card expense">
-          <span>Expense</span>
+          <span>支出</span>
           <strong>{{ Number(summary.expense || 0).toFixed(2) }}</strong>
         </div>
         <div class="summary-card income">
-          <span>Income</span>
+          <span>收入</span>
           <strong>{{ Number(summary.income || 0).toFixed(2) }}</strong>
         </div>
         <div class="summary-card balance">
-          <span>Balance</span>
+          <span>结余</span>
           <strong>{{ Number(summary.balance || 0).toFixed(2) }}</strong>
         </div>
       </div>
@@ -339,36 +339,36 @@ onMounted(() => {
     </section>
 
     <section class="panel list-panel">
-      <h3 class="list-title">Bills</h3>
+      <h3 class="list-title">账单列表</h3>
 
       <div v-if="loading" class="loading-wrap">
-        <van-loading size="24px">Loading...</van-loading>
+        <van-loading size="24px">加载中...</van-loading>
       </div>
-      <van-empty v-else-if="!list.length" description="No bills yet" />
+      <van-empty v-else-if="!list.length" description="暂无账单" />
 
       <van-list
         v-else
         v-model:loading="loadingMore"
         :finished="!hasMore"
-        finished-text="No more"
-        @load="loadMoreBills"
+        finished-text="没有更多了"
+        @load="loadMore账单列表"
       >
         <van-cell-group inset>
           <van-cell v-for="item in list" :key="item.id" class="bill-cell" center>
             <template #title>
               <p class="line-1">
                 <strong>{{ item.category }}</strong>
-                <van-tag :type="item.billType === 'EXPENSE' ? 'danger' : 'success'" plain>
-                  {{ item.billType === 'EXPENSE' ? 'Expense' : 'Income' }}
+                <van-tag :type="item.bill类型 === 'EXPENSE' ? 'danger' : 'success'" plain>
+                  {{ item.bill类型 === 'EXPENSE' ? '支出' : '收入' }}
                 </van-tag>
               </p>
-              <p class="line-2">{{ item.billDate }} {{ item.note || '' }}</p>
+              <p class="line-2">{{ item.bill日期 }} {{ item.note || '' }}</p>
             </template>
 
             <template #value>
               <div class="bill-side">
-                <strong :class="item.billType === 'EXPENSE' ? 'expense-text' : 'income-text'">
-                  {{ item.billType === 'EXPENSE' ? '-' : '+' }}{{ Number(item.amount).toFixed(2) }}
+                <strong :class="item.bill类型 === 'EXPENSE' ? 'expense-text' : 'income-text'">
+                  {{ item.bill类型 === 'EXPENSE' ? '-' : '+' }}{{ Number(item.amount).toFixed(2) }}
                 </strong>
                 <van-button
                   size="mini"
@@ -377,7 +377,7 @@ onMounted(() => {
                   :loading="deletingId === item.id"
                   @click.stop="removeBill(item.id)"
                 >
-                  Delete
+                  删除
                 </van-button>
               </div>
             </template>
@@ -386,31 +386,31 @@ onMounted(() => {
       </van-list>
     </section>
 
-    <button type="button" class="fab-button" @click="openAddPopup" aria-label="Add bill">
+    <button type="button" class="fab-button" @click="openAddPopup" aria-label="添加账单">
       +
     </button>
 
     <van-popup v-model:show="showAddPopup" round position="center" class="add-popup">
       <div class="add-popup-body">
         <div class="add-popup-head">
-          <h3>Add Bill</h3>
+          <h3>添加账单</h3>
           <button type="button" class="popup-close" @click="closeAddPopup">×</button>
         </div>
 
         <van-form class="form" @submit="submitBill">
           <van-cell-group inset>
-            <van-field label="Type">
+            <van-field label="类型">
               <template #input>
-                <van-radio-group v-model="form.billType" direction="horizontal">
-                  <van-radio name="EXPENSE">Expense</van-radio>
-                  <van-radio name="INCOME">Income</van-radio>
+                <van-radio-group v-model="form.bill类型" direction="horizontal">
+                  <van-radio name="EXPENSE">支出</van-radio>
+                  <van-radio name="INCOME">收入</van-radio>
                 </van-radio-group>
               </template>
             </van-field>
 
-            <van-field label="Category">
+            <van-field label="分类">
               <template #input>
-                <div class="category-trigger" @click="openCategoryPicker">
+                <div class="category-trigger" @click="open分类Picker">
                   <span class="category-value">{{ form.category }}</span>
                   <span class="category-arrow">></span>
                 </div>
@@ -420,53 +420,53 @@ onMounted(() => {
             <van-field
               v-model.trim="form.amount"
               type="number"
-              label="Amount"
+              label="金额"
               name="amount"
               placeholder="0.00"
             />
 
             <van-field
-              :model-value="form.billDate"
+              :model-value="form.bill日期"
               is-link
               readonly
-              label="Date"
+              label="日期"
               placeholder="Select date"
-              @click="openBillDateCalendar"
+              @click="openBill日期Calendar"
             />
 
             <van-field
               v-model.trim="form.note"
               type="text"
-              label="Note"
+              label="备注"
               maxlength="255"
-              placeholder="Optional"
+              placeholder="可选"
             />
           </van-cell-group>
 
           <div class="submit-wrap">
             <van-button round block type="primary" native-type="submit" :loading="saving">
-              Save bill
+              保存账单
             </van-button>
           </div>
         </van-form>
       </div>
     </van-popup>
 
-    <van-popup v-model:show="showCategoryPicker" round position="bottom">
-      <van-picker :columns="categoryColumns" @cancel="closeCategoryPicker" @confirm="onCategoryConfirm" />
+    <van-popup v-model:show="show分类Picker" round position="bottom">
+      <van-picker :columns="categoryColumns" @cancel="close分类Picker" @confirm="on分类确认" />
     </van-popup>
 
     <van-calendar
-      v-model:show="showBillDateCalendar"
+      v-model:show="showBill日期Calendar"
       type="single"
-      :min-date="billDateMin"
-      :max-date="billDateMax"
-      @confirm="onBillDateConfirm"
-      @cancel="closeBillDateCalendar"
+      :min-date="bill日期Min"
+      :max-date="bill日期Max"
+      @confirm="onBill日期确认"
+      @cancel="closeBill日期Calendar"
     />
 
-    <van-popup v-model:show="showMonthPicker" round position="bottom">
-      <van-picker :columns="monthColumns" @cancel="closeMonthPicker" @confirm="onMonthConfirm" />
+    <van-popup v-model:show="show月份Picker" round position="bottom">
+      <van-picker :columns="monthColumns" @cancel="close月份Picker" @confirm="on月份确认" />
     </van-popup>
   </main>
 </template>
