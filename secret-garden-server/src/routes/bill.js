@@ -7,11 +7,13 @@ const { AppError } = require("../utils/app-error");
 const router = express.Router();
 
 const allowedBillTypes = new Set(["EXPENSE", "INCOME"]);
+const DEFAULT_PAGE_SIZE = 10;
+const MAX_PAGE_SIZE = 100;
 
 function normalizeBillType(value) {
   const billType = String(value || "").trim().toUpperCase();
   if (!allowedBillTypes.has(billType)) {
-    throw new AppError(400, "INVALID_BILL_TYPE", "billType 仅支持 EXPENSE 或 INCOME");
+    throw new AppError(400, "INVALID_BILL_TYPE", "billType only supports EXPENSE or INCOME");
   }
   return billType;
 }
@@ -19,7 +21,7 @@ function normalizeBillType(value) {
 function normalizeCategory(value) {
   const category = String(value || "").trim();
   if (!category || category.length > 32) {
-    throw new AppError(400, "INVALID_CATEGORY", "分类不能为空且长度不能超过 32");
+    throw new AppError(400, "INVALID_CATEGORY", "category is required and must be <= 32 chars");
   }
   return category;
 }
@@ -27,7 +29,7 @@ function normalizeCategory(value) {
 function normalizeAmount(value) {
   const amount = Number(value);
   if (!Number.isFinite(amount) || amount <= 0) {
-    throw new AppError(400, "INVALID_AMOUNT", "金额必须大于 0");
+    throw new AppError(400, "INVALID_AMOUNT", "amount must be greater than 0");
   }
   return Number(amount.toFixed(2));
 }
@@ -38,7 +40,7 @@ function normalizeNote(value) {
   }
   const note = String(value).trim();
   if (note.length > 255) {
-    throw new AppError(400, "INVALID_NOTE", "备注不能超过 255 字");
+    throw new AppError(400, "INVALID_NOTE", "note must be <= 255 chars");
   }
   return note || null;
 }
@@ -46,13 +48,33 @@ function normalizeNote(value) {
 function normalizeBillDate(value) {
   const billDate = String(value || "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(billDate)) {
-    throw new AppError(400, "INVALID_BILL_DATE", "billDate 格式需为 YYYY-MM-DD");
+    throw new AppError(400, "INVALID_BILL_DATE", "billDate must be YYYY-MM-DD");
   }
   const date = new Date(`${billDate}T00:00:00Z`);
   if (Number.isNaN(date.getTime())) {
-    throw new AppError(400, "INVALID_BILL_DATE", "billDate 不是有效日期");
+    throw new AppError(400, "INVALID_BILL_DATE", "billDate is invalid");
   }
   return billDate;
+}
+
+function normalizePagination(pageValue, pageSizeValue) {
+  const page = pageValue === undefined ? 1 : Number.parseInt(String(pageValue), 10);
+  const pageSize =
+    pageSizeValue === undefined ? DEFAULT_PAGE_SIZE : Number.parseInt(String(pageSizeValue), 10);
+
+  if (!Number.isInteger(page) || page < 1) {
+    throw new AppError(400, "INVALID_PAGE", "page must be an integer >= 1");
+  }
+
+  if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > MAX_PAGE_SIZE) {
+    throw new AppError(400, "INVALID_PAGE_SIZE", `pageSize must be between 1 and ${MAX_PAGE_SIZE}`);
+  }
+
+  return {
+    page,
+    pageSize,
+    offset: (page - 1) * pageSize,
+  };
 }
 
 function toBillView(row) {
@@ -73,53 +95,57 @@ router.get(
   authRequired,
   asyncHandler(async (req, res) => {
     const month = String(req.query.month || "").trim();
-    let rows;
-
-    if (month) {
-      if (!/^\d{4}-\d{2}$/.test(month)) {
-        throw new AppError(400, "INVALID_MONTH", "month 格式需为 YYYY-MM");
-      }
-      rows = await query(
-        `
-          SELECT id, bill_type, category, amount, note, bill_date, created_at, updated_at
-          FROM bills
-          WHERE user_id = ? AND DATE_FORMAT(bill_date, '%Y-%m') = ?
-          ORDER BY bill_date DESC, id DESC
-        `,
-        [req.user.id, month]
-      );
-    } else {
-      rows = await query(
-        `
-          SELECT id, bill_type, category, amount, note, bill_date, created_at, updated_at
-          FROM bills
-          WHERE user_id = ?
-          ORDER BY bill_date DESC, id DESC
-          LIMIT 200
-        `,
-        [req.user.id]
-      );
+    if (month && !/^\d{4}-\d{2}$/.test(month)) {
+      throw new AppError(400, "INVALID_MONTH", "month must be YYYY-MM");
     }
 
-    const bills = rows.map(toBillView);
-    const summary = bills.reduce(
-      (acc, bill) => {
-        if (bill.billType === "EXPENSE") {
-          acc.expense += bill.amount;
-        } else {
-          acc.income += bill.amount;
-        }
-        return acc;
-      },
-      { expense: 0, income: 0 }
+    const { page, pageSize, offset } = normalizePagination(req.query.page, req.query.pageSize);
+
+    const whereSql = month
+      ? "WHERE user_id = ? AND DATE_FORMAT(bill_date, '%Y-%m') = ?"
+      : "WHERE user_id = ?";
+    const whereParams = month ? [req.user.id, month] : [req.user.id];
+
+    const rows = await query(
+      `
+        SELECT id, bill_type, category, amount, note, bill_date, created_at, updated_at
+        FROM bills
+        ${whereSql}
+        ORDER BY bill_date DESC, id DESC
+        LIMIT ? OFFSET ?
+      `,
+      [...whereParams, pageSize, offset]
     );
+
+    const aggregate = await queryOne(
+      `
+        SELECT
+          COUNT(1) AS total,
+          COALESCE(SUM(CASE WHEN bill_type = 'EXPENSE' THEN amount ELSE 0 END), 0) AS expense,
+          COALESCE(SUM(CASE WHEN bill_type = 'INCOME' THEN amount ELSE 0 END), 0) AS income
+        FROM bills
+        ${whereSql}
+      `,
+      whereParams
+    );
+
+    const total = Number(aggregate?.total || 0);
+    const expense = Number(aggregate?.expense || 0);
+    const income = Number(aggregate?.income || 0);
+    const bills = rows.map(toBillView);
 
     res.json({
       bills,
       summary: {
-        expense: Number(summary.expense.toFixed(2)),
-        income: Number(summary.income.toFixed(2)),
-        balance: Number((summary.income - summary.expense).toFixed(2)),
+        expense: Number(expense.toFixed(2)),
+        income: Number(income.toFixed(2)),
+        balance: Number((income - expense).toFixed(2)),
+      },
+      pagination: {
+        page,
+        pageSize,
+        total,
+        hasMore: offset + bills.length < total,
       },
     });
   })
@@ -164,7 +190,7 @@ router.patch(
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) {
-      throw new AppError(400, "INVALID_ID", "账单 ID 非法");
+      throw new AppError(400, "INVALID_ID", "invalid bill id");
     }
 
     const fields = [];
@@ -192,7 +218,7 @@ router.patch(
     }
 
     if (!fields.length) {
-      throw new AppError(400, "EMPTY_UPDATE", "没有可更新字段");
+      throw new AppError(400, "EMPTY_UPDATE", "no updatable fields");
     }
 
     params.push(id, req.user.id);
@@ -202,7 +228,7 @@ router.patch(
     );
 
     if (!result.affectedRows) {
-      throw new AppError(404, "BILL_NOT_FOUND", "账单不存在");
+      throw new AppError(404, "BILL_NOT_FOUND", "bill not found");
     }
 
     const bill = await queryOne(
@@ -226,7 +252,7 @@ router.delete(
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) {
-      throw new AppError(400, "INVALID_ID", "账单 ID 非法");
+      throw new AppError(400, "INVALID_ID", "invalid bill id");
     }
 
     const result = await execute("DELETE FROM bills WHERE id = ? AND user_id = ?", [
@@ -235,10 +261,10 @@ router.delete(
     ]);
 
     if (!result.affectedRows) {
-      throw new AppError(404, "BILL_NOT_FOUND", "账单不存在");
+      throw new AppError(404, "BILL_NOT_FOUND", "bill not found");
     }
 
-    res.json({ message: "删除成功" });
+    res.json({ message: "deleted" });
   })
 );
 
