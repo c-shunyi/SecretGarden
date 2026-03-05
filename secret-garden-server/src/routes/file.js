@@ -4,6 +4,7 @@ const fsPromises = require("node:fs/promises");
 const path = require("node:path");
 const express = require("express");
 const multer = require("multer");
+const sharp = require("sharp");
 const { execute, query, queryOne } = require("../db/mysql");
 const { authRequired } = require("../middlewares/auth");
 const { asyncHandler } = require("../utils/async-handler");
@@ -28,6 +29,14 @@ function resolveMaxUploadBytes() {
 
 const maxUploadBytes = resolveMaxUploadBytes();
 
+function resolveWebpQuality() {
+  const quality = Number(process.env.FILE_WEBP_QUALITY || 82);
+  if (!Number.isFinite(quality)) return 82;
+  return Math.min(Math.max(Math.floor(quality), 1), 100);
+}
+
+const webpQuality = resolveWebpQuality();
+
 function normalizeOriginalName(value) {
   const raw = path.basename(String(value || "file").trim());
   const cleaned = raw.replace(/[\r\n\t]/g, "") || "file";
@@ -44,6 +53,67 @@ function generateStoredFileName(originalName) {
   const ext = normalizeFileExt(originalName);
   const random = crypto.randomBytes(8).toString("hex");
   return `${Date.now()}-${random}${ext}`;
+}
+
+function shouldConvertToWebp(mimeType) {
+  const value = String(mimeType || "").toLowerCase();
+  if (!value.startsWith("image/")) return false;
+  if (value === "image/gif" || value === "image/svg+xml") return false;
+  return true;
+}
+
+function toWebpOriginalName(originalName) {
+  const safeOriginal = normalizeOriginalName(originalName || "image");
+  const ext = path.extname(safeOriginal);
+  const base = path.basename(safeOriginal, ext).trim() || "image";
+  return normalizeOriginalName(`${base}.webp`);
+}
+
+async function maybeConvertUploadedImageToWebp(file) {
+  if (!file || !file.path || !shouldConvertToWebp(file.mimetype)) {
+    return file;
+  }
+
+  const sourcePath = file.path;
+  const sourceDir = path.dirname(sourcePath);
+  const sourceBaseName = path.basename(file.filename, path.extname(file.filename));
+  const targetFileName = `${sourceBaseName}.webp`;
+  const targetPath = path.join(sourceDir, targetFileName);
+  const tempPath = path.join(
+    sourceDir,
+    `${sourceBaseName}.webp.tmp-${crypto.randomBytes(4).toString("hex")}`
+  );
+
+  try {
+    await sharp(sourcePath).rotate().webp({ quality: webpQuality }).toFile(tempPath);
+
+    if (sourcePath !== targetPath) {
+      await fsPromises.unlink(sourcePath).catch((error) => {
+        if (error && error.code !== "ENOENT") {
+          throw error;
+        }
+      });
+    }
+
+    await fsPromises.unlink(targetPath).catch((error) => {
+      if (error && error.code !== "ENOENT") {
+        throw error;
+      }
+    });
+
+    await fsPromises.rename(tempPath, targetPath);
+    const stat = await fsPromises.stat(targetPath);
+
+    file.filename = targetFileName;
+    file.path = targetPath;
+    file.size = Number(stat.size || 0);
+    file.mimetype = "image/webp";
+    file.originalname = toWebpOriginalName(file.originalname);
+    return file;
+  } catch (error) {
+    await fsPromises.unlink(tempPath).catch(() => {});
+    throw new AppError(400, "IMAGE_CONVERT_FAILED", "Image convert to webp failed");
+  }
 }
 
 async function ensureUserStorageDir(userId) {
@@ -190,6 +260,8 @@ router.post(
     if (!req.file) {
       throw new AppError(400, "FILE_REQUIRED", "Please upload file by field 'file'");
     }
+
+    await maybeConvertUploadedImageToWebp(req.file);
 
     const userId = Number(req.user.id);
     const originalName = normalizeOriginalName(req.file.originalname);
