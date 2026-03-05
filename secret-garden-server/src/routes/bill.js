@@ -101,10 +101,18 @@ router.get(
 
     const { page, pageSize, offset } = normalizePagination(req.query.page, req.query.pageSize);
 
-    const whereSql = month
-      ? "WHERE user_id = ? AND DATE_FORMAT(bill_date, '%Y-%m') = ?"
-      : "WHERE user_id = ?";
-    const whereParams = month ? [req.user.id, month] : [req.user.id];
+    const whereParts = ["user_id = ?"];
+    const whereParams = [req.user.id];
+
+    if (month) {
+      const [year, monthNumber] = month.split("-").map((value) => Number.parseInt(value, 10));
+      const monthStart = `${month}-01`;
+      const nextMonthStart = new Date(Date.UTC(year, monthNumber, 1)).toISOString().slice(0, 10);
+      whereParts.push("bill_date >= ? AND bill_date < ?");
+      whereParams.push(monthStart, nextMonthStart);
+    }
+
+    const whereSql = `WHERE ${whereParts.join(" AND ")}`;
 
     const rows = await query(
       `
@@ -112,9 +120,9 @@ router.get(
         FROM bills
         ${whereSql}
         ORDER BY bill_date DESC, id DESC
-        LIMIT ? OFFSET ?
+        LIMIT ${pageSize} OFFSET ${offset}
       `,
-      [...whereParams, pageSize, offset]
+      whereParams
     );
 
     const aggregate = await queryOne(
