@@ -1,6 +1,7 @@
 ﻿<script setup>
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { closeToast, showLoadingToast } from 'vant'
 import * as echarts from 'echarts'
 import { getBillOverviewApi } from '@/services/bill-api'
 
@@ -38,6 +39,10 @@ const currentYear = today.slice(0, 4)
 
 function ensureChart() {
   if (!chartRef.value) return null
+  if (chartInstance && chartInstance.getDom() !== chartRef.value) {
+    chartInstance.dispose()
+    chartInstance = null
+  }
   if (!chartInstance) {
     chartInstance = echarts.init(chartRef.value)
   }
@@ -74,6 +79,7 @@ function renderChart() {
   instance.setOption({
     tooltip: {
       trigger: 'item',
+      triggerOn: 'click',
       formatter: '{b}: {c} ({d}%)',
     },
     legend: {
@@ -96,12 +102,24 @@ function renderChart() {
           borderWidth: 2,
         },
         label: {
-          formatter: '{b}\n{d}%',
+          show: false,
+        },
+        labelLine: {
+          show: false,
+        },
+        emphasis: {
+          label: {
+            show: false,
+          },
+          labelLine: {
+            show: false,
+          },
         },
         data: pieData,
       },
     ],
   })
+  instance.resize()
 }
 
 async function loadOverview() {
@@ -109,6 +127,11 @@ async function loadOverview() {
 
   loading.value = true
   errorText.value = ''
+  showLoadingToast({
+    message: TEXT.loading,
+    forbidClick: true,
+    duration: 0,
+  })
 
   try {
     const params =
@@ -133,6 +156,7 @@ async function loadOverview() {
     }
   } finally {
     loading.value = false
+    closeToast()
     await nextTick()
     renderChart()
   }
@@ -163,6 +187,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  closeToast()
   window.removeEventListener('resize', handleResize)
   if (chartInstance) {
     chartInstance.dispose()
@@ -187,47 +212,41 @@ onBeforeUnmount(() => {
         <van-tab :title="TEXT.yearTab" name="YEAR" />
       </van-tabs>
 
-      <div v-if="loading" class="loading-wrap">
-        <van-loading size="24px">{{ TEXT.loading }}</van-loading>
+      <p v-if="errorText" class="tip error">{{ errorText }}</p>
+
+      <div class="summary-card">
+        <div>
+          <p class="summary-label">{{ data.periodLabel }}</p>
+          <strong class="summary-value">{{ Number(data.totalExpense || 0).toFixed(2) }}</strong>
+        </div>
+        <span class="summary-tag">{{ TEXT.total }}</span>
       </div>
 
-      <template v-else>
-        <p v-if="errorText" class="tip error">{{ errorText }}</p>
-
-        <div class="summary-card">
-          <div>
-            <p class="summary-label">{{ data.periodLabel }}</p>
-            <strong class="summary-value">{{ Number(data.totalExpense || 0).toFixed(2) }}</strong>
-          </div>
-          <span class="summary-tag">{{ TEXT.total }}</span>
+      <section class="block">
+        <h3 class="block-title">{{ TEXT.categoryTitle }}</h3>
+        <div class="chart-wrap">
+          <div ref="chartRef" class="chart"></div>
         </div>
+      </section>
 
-        <section class="block">
-          <h3 class="block-title">{{ TEXT.categoryTitle }}</h3>
-          <div class="chart-wrap">
-            <div ref="chartRef" class="chart"></div>
-          </div>
-        </section>
+      <section class="block">
+        <h3 class="block-title">{{ TEXT.topTitle }}</h3>
+        <van-empty v-if="!data.topExpenses.length" :description="TEXT.noData" />
+        <van-cell-group v-else inset>
+          <van-cell v-for="(item, idx) in data.topExpenses" :key="item.id" center>
+            <template #title>
+              <p class="line-1">
+                <strong>{{ idx + 1 }}. {{ item.category }}</strong>
+              </p>
+              <p class="line-2">{{ item.billDate }} {{ item.note || '' }}</p>
+            </template>
 
-        <section class="block">
-          <h3 class="block-title">{{ TEXT.topTitle }}</h3>
-          <van-empty v-if="!data.topExpenses.length" :description="TEXT.noData" />
-          <van-cell-group v-else inset>
-            <van-cell v-for="(item, idx) in data.topExpenses" :key="item.id" center>
-              <template #title>
-                <p class="line-1">
-                  <strong>{{ idx + 1 }}. {{ item.category }}</strong>
-                </p>
-                <p class="line-2">{{ item.billDate }} {{ item.note || '' }}</p>
-              </template>
-
-              <template #value>
-                <strong class="expense-text">-{{ Number(item.amount).toFixed(2) }}</strong>
-              </template>
-            </van-cell>
-          </van-cell-group>
-        </section>
-      </template>
+            <template #value>
+              <strong class="expense-text">-{{ Number(item.amount).toFixed(2) }}</strong>
+            </template>
+          </van-cell>
+        </van-cell-group>
+      </section>
     </section>
   </main>
 </template>
@@ -274,12 +293,6 @@ onBeforeUnmount(() => {
   margin: 0;
   font-size: 20px;
   color: #1f3f26;
-}
-
-.loading-wrap {
-  padding: 20px 0;
-  display: grid;
-  place-items: center;
 }
 
 .summary-card {

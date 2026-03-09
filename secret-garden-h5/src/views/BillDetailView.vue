@@ -31,7 +31,7 @@ const TEXT = {
   dateError: '请选择记账日期',
 }
 
-const expenseCategories = ['餐饮', '交通', '购物', '娱乐', '居家', '医疗', '其他']
+const expenseCategories = ['餐饮', '交通', '购物', '娱乐', '住房', '零食', '水果', '日用', '医疗', '其他']
 const incomeCategories = ['工资', '奖金', '理财', '退款', '其他']
 
 const route = useRoute()
@@ -55,9 +55,6 @@ const form = ref({
 
 const currentCategories = computed(() =>
   form.value.billType === 'EXPENSE' ? expenseCategories : incomeCategories
-)
-const categoryColumns = computed(() =>
-  currentCategories.value.map((name) => ({ text: name, value: name }))
 )
 
 const showCategoryPicker = ref(false)
@@ -127,13 +124,9 @@ function closeCategoryPicker() {
   showCategoryPicker.value = false
 }
 
-function onCategoryConfirm(payload) {
-  const next =
-    payload?.selectedValues?.[0] ||
-    payload?.selectedOptions?.[0]?.value ||
-    payload?.selectedOptions?.[0]?.text
-  if (typeof next === 'string' && next) {
-    form.value.category = next
+function selectCategory(category) {
+  if (typeof category === 'string' && category) {
+    form.value.category = category
   }
   closeCategoryPicker()
 }
@@ -331,8 +324,30 @@ onMounted(() => {
       <p v-else class="tip error">{{ errorText || TEXT.loadFailed }}</p>
     </section>
 
-    <van-popup v-model:show="showCategoryPicker" round position="bottom">
-      <van-picker :columns="categoryColumns" @cancel="closeCategoryPicker" @confirm="onCategoryConfirm" />
+    <van-popup v-model:show="showCategoryPicker" round position="center" class="category-popup">
+      <div class="category-popup-body">
+        <div class="category-popup-head">
+          <h4 class="category-popup-title">{{ TEXT.category }}</h4>
+          <button type="button" class="popup-close" @click="closeCategoryPicker">
+            <van-icon name="cross" class="popup-close-icon" />
+          </button>
+        </div>
+
+        <div class="category-grid-wrap">
+          <div class="category-grid">
+            <button
+              v-for="name in currentCategories"
+              :key="`${form.billType}-${name}`"
+              type="button"
+              class="category-option"
+              :class="{ active: form.category === name }"
+              @click="selectCategory(name)"
+            >
+              {{ name }}
+            </button>
+          </div>
+        </div>
+      </div>
     </van-popup>
 
     <van-calendar
@@ -437,11 +452,81 @@ onMounted(() => {
   color: #1f6a2a;
 }
 
+.popup-close {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: #f0f4f1;
+  color: #6a7d6d;
+}
+
+.popup-close-icon {
+  font-size: 16px;
+}
+
 .action-wrap {
   margin-top: 8px;
   padding: 0 12px;
   display: grid;
   gap: 8px;
+}
+
+:deep(.category-popup) {
+  width: min(92vw, 560px);
+  max-height: 80vh;
+}
+
+.category-popup-body {
+  padding: 14px 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.category-popup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.category-popup-title {
+  margin: 0;
+  color: #213f27;
+  font-size: 16px;
+}
+
+.category-grid-wrap {
+  max-height: min(50vh, 320px);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.category-option {
+  height: 36px;
+  border: 1px solid #d0ddd3;
+  border-radius: 10px;
+  background: #fff;
+  color: #2a4330;
+  font-size: 13px;
+  padding: 0 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.category-option.active {
+  color: #fff;
+  border-color: #2f8041;
+  background: linear-gradient(90deg, #2f8041 0%, #3d9b57 100%);
+  box-shadow: 0 6px 12px rgba(47, 128, 65, 0.25);
 }
 
 :deep(.van-button--primary) {
