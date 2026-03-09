@@ -31,7 +31,7 @@ const TEXT = {
   dateError: '请选择记账日期',
 }
 
-const expenseCategories = ['餐饮', '交通', '购物', '娱乐', '住房', '零食', '水果', '日用', '医疗', '其他']
+const expenseCategories = ['餐饮', '日用', '购物', '交通', '娱乐', '住房', '零食', '水果', '医疗', '人情' , '其他']
 const incomeCategories = ['工资', '奖金', '理财', '退款', '其他']
 
 const route = useRoute()
