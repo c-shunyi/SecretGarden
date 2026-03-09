@@ -3,6 +3,8 @@ import { hasSession } from '@/stores/session'
 import AuthView from '@/views/AuthView.vue'
 import HomeView from '@/views/HomeView.vue'
 import BillView from '@/views/BillView.vue'
+import BillOverviewView from '@/views/BillOverviewView.vue'
+import BillDetailView from '@/views/BillDetailView.vue'
 import UserCenterView from '@/views/UserCenterView.vue'
 import CheckinPlansView from '@/views/CheckinPlansView.vue'
 import CheckinPlanFeedView from '@/views/CheckinPlanFeedView.vue'
@@ -33,6 +35,18 @@ const router = createRouter({
       path: '/bills',
       name: 'bills',
       component: BillView,
+      meta: { requiresAuth: true, showTabbar: false },
+    },
+    {
+      path: '/bills/overview',
+      name: 'bill-overview',
+      component: BillOverviewView,
+      meta: { requiresAuth: true, showTabbar: false },
+    },
+    {
+      path: '/bills/:billId',
+      name: 'bill-detail',
+      component: BillDetailView,
       meta: { requiresAuth: true, showTabbar: false },
     },
     {

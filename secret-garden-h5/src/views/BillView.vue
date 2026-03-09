@@ -1,65 +1,52 @@
-<script setup>
+﻿<script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { showConfirmDialog } from 'vant'
-import { createBillApi, deleteBillApi, listBillsApi } from '@/services/bill-api'
+import { useRouter } from 'vue-router'
+import { createBillApi, getBillOverviewSummaryApi, listBillsApi } from '@/services/bill-api'
+
+const router = useRouter()
 
 const TEXT = {
-  overview: '\u6570\u636e\u5927\u7eb2',
-  month: '\u6708\u4efd',
-  expense: '\u652f\u51fa',
-  income: '\u6536\u5165',
-  balance: '\u7ed3\u4f59',
-  bills: '\u8d26\u5355\u5217\u8868',
-  loading: '\u52a0\u8f7d\u4e2d...',
-  noBills: '\u6682\u65e0\u8d26\u5355',
-  noMore: '\u6ca1\u6709\u66f4\u591a\u4e86',
-  addBill: '\u6dfb\u52a0\u8d26\u5355',
-  type: '\u7c7b\u578b',
-  category: '\u5206\u7c7b',
-  amount: '\u91d1\u989d',
-  date: '\u65e5\u671f',
-  note: '\u5907\u6ce8',
-  optional: '\u53ef\u9009',
-  saveBill: '\u4fdd\u5b58\u8d26\u5355',
-  expenseTag: '\u652f\u51fa',
-  incomeTag: '\u6536\u5165',
-  delete: '\u5220\u9664',
-  confirm: '\u786e\u8ba4',
-  confirmDelete: '\u786e\u8ba4\u5220\u9664\u8fd9\u6761\u8d26\u5355\u5417\uff1f',
-  cancel: '\u53d6\u6d88',
-  saved: '\u8bb0\u8d26\u6210\u529f',
-  saveFailed: '\u8bb0\u8d26\u5931\u8d25',
-  deleted: '\u5220\u9664\u6210\u529f',
-  deleteFailed: '\u5220\u9664\u5931\u8d25',
-  loadFailed: '\u83b7\u53d6\u8d26\u5355\u5931\u8d25',
-  amountError: '\u91d1\u989d\u5fc5\u987b\u5927\u4e8e 0',
-  dateError: '\u8bf7\u9009\u62e9\u8bb0\u8d26\u65e5\u671f',
+  overview: '数据大纲',
+  monthExpense: '本月支出',
+  todayExpense: '今日支出',
+  openOverview: '查看大纲详情',
+  month: '月份',
+  bills: '账单列表',
+  loading: '加载中...',
+  noBills: '暂无账单',
+  noMore: '没有更多了',
+  addBill: '添加账单',
+  type: '类型',
+  category: '分类',
+  amount: '金额',
+  date: '日期',
+  note: '备注',
+  optional: '可选',
+  saveBill: '保存账单',
+  expenseTag: '支出',
+  incomeTag: '收入',
+  saved: '记账成功',
+  saveFailed: '记账失败',
+  loadFailed: '获取账单失败',
+  amountError: '金额必须大于 0',
+  dateError: '请选择记账日期',
 }
 
-const expenseCategories = [
-  '\u9910\u996e',
-  '\u4ea4\u901a',
-  '\u8d2d\u7269',
-  '\u5a31\u4e50',
-  '\u5c45\u5bb6',
-  '\u533b\u7597',
-  '\u5176\u4ed6',
-]
-const incomeCategories = ['\u5de5\u8d44', '\u5956\u91d1', '\u7406\u8d22', '\u9000\u6b3e', '\u5176\u4ed6']
+const expenseCategories = ['餐饮', '交通', '购物', '娱乐', '居家', '医疗', '其他']
+const incomeCategories = ['工资', '奖金', '理财', '退款', '其他']
 
 const loading = ref(false)
 const loadingMore = ref(false)
 const saving = ref(false)
-const deletingId = ref(0)
+const overviewLoading = ref(false)
 const errorText = ref('')
 const successText = ref('')
 
 const month = ref(new Date().toISOString().slice(0, 7))
 const list = ref([])
-const summary = ref({
-  expense: 0,
-  income: 0,
-  balance: 0,
+const overviewSummary = ref({
+  monthExpense: 0,
+  todayExpense: 0,
 })
 
 const BILL_PAGE_SIZE = 10
@@ -223,6 +210,23 @@ watch(
   }
 )
 
+async function loadOverviewSummary() {
+  if (overviewLoading.value) return
+
+  overviewLoading.value = true
+  try {
+    const response = await getBillOverviewSummaryApi()
+    overviewSummary.value = {
+      monthExpense: Number(response?.monthExpense || 0),
+      todayExpense: Number(response?.todayExpense || 0),
+    }
+  } catch (error) {
+    errorText.value = error.message || TEXT.loadFailed
+  } finally {
+    overviewLoading.value = false
+  }
+}
+
 async function loadBills(reset = false) {
   if (loading.value) return
   if (!reset && !hasMore.value) return
@@ -255,7 +259,6 @@ async function loadBills(reset = false) {
 
     const rows = Array.isArray(response?.bills) ? response.bills : []
     list.value = isFirstPage ? rows : [...list.value, ...rows]
-    summary.value = response?.summary || { expense: 0, income: 0, balance: 0 }
 
     const serverHasMore = response?.pagination?.hasMore
     hasMore.value =
@@ -304,7 +307,7 @@ async function submitBill() {
     successText.value = TEXT.saved
     resetForm()
     closeAddPopup()
-    await loadBills(true)
+    await Promise.all([loadBills(true), loadOverviewSummary()])
   } catch (error) {
     errorText.value = error.message || TEXT.saveFailed
   } finally {
@@ -312,64 +315,35 @@ async function submitBill() {
   }
 }
 
-async function removeBill(id) {
-  if (deletingId.value) return
+function openBillDetail(id) {
+  router.push({ name: 'bill-detail', params: { billId: id } })
+}
 
-  try {
-    await showConfirmDialog({
-      title: TEXT.confirm,
-      message: TEXT.confirmDelete,
-      confirmButtonText: TEXT.delete,
-      cancelButtonText: TEXT.cancel,
-    })
-  } catch {
-    return
-  }
-
-  deletingId.value = id
-  resetTip()
-  try {
-    await deleteBillApi(id)
-    successText.value = TEXT.deleted
-    await loadBills(true)
-  } catch (error) {
-    errorText.value = error.message || TEXT.deleteFailed
-  } finally {
-    deletingId.value = 0
-  }
+function openOverviewDetail() {
+  router.push({ name: 'bill-overview' })
 }
 
 onMounted(() => {
-  loadBills(true)
+  Promise.all([loadBills(true), loadOverviewSummary()])
 })
 </script>
 
 <template>
   <main class="page">
     <section class="panel overview-panel">
-      <div class="overview-head">
+      <button type="button" class="overview-entry" @click="openOverviewDetail" :aria-label="TEXT.openOverview">
         <h2 class="panel-title">{{ TEXT.overview }}</h2>
-        <label class="month-field">
-          <span>{{ TEXT.month }}</span>
-          <button type="button" class="month-trigger" @click="openMonthPicker">
-            <span>{{ month }}</span>
-            <van-icon name="arrow" class="month-arrow" />
-          </button>
-        </label>
-      </div>
+        <van-icon name="arrow" class="overview-arrow" />
+      </button>
 
-      <div class="summary-grid">
+      <div class="summary-grid" :class="{ loading: overviewLoading }">
         <div class="summary-card expense">
-          <span>{{ TEXT.expense }}</span>
-          <strong>{{ Number(summary.expense || 0).toFixed(2) }}</strong>
+          <span>{{ TEXT.monthExpense }}</span>
+          <strong>{{ Number(overviewSummary.monthExpense || 0).toFixed(2) }}</strong>
         </div>
-        <div class="summary-card income">
-          <span>{{ TEXT.income }}</span>
-          <strong>{{ Number(summary.income || 0).toFixed(2) }}</strong>
-        </div>
-        <div class="summary-card balance">
-          <span>{{ TEXT.balance }}</span>
-          <strong>{{ Number(summary.balance || 0).toFixed(2) }}</strong>
+        <div class="summary-card today">
+          <span>{{ TEXT.todayExpense }}</span>
+          <strong>{{ Number(overviewSummary.todayExpense || 0).toFixed(2) }}</strong>
         </div>
       </div>
 
@@ -378,7 +352,16 @@ onMounted(() => {
     </section>
 
     <section class="panel list-panel">
-      <h3 class="list-title">{{ TEXT.bills }}</h3>
+      <div class="list-head">
+        <h3 class="list-title">{{ TEXT.bills }}</h3>
+        <label class="month-field">
+          <span>{{ TEXT.month }}</span>
+          <button type="button" class="month-trigger" @click="openMonthPicker">
+            <span>{{ month }}</span>
+            <van-icon name="arrow" class="month-arrow" />
+          </button>
+        </label>
+      </div>
 
       <div v-if="loading" class="loading-wrap">
         <van-loading size="24px">{{ TEXT.loading }}</van-loading>
@@ -393,7 +376,14 @@ onMounted(() => {
         @load="loadMoreBills"
       >
         <van-cell-group inset>
-          <van-cell v-for="item in list" :key="item.id" class="bill-cell" center>
+          <van-cell
+            v-for="item in list"
+            :key="item.id"
+            class="bill-cell"
+            center
+            is-link
+            @click="openBillDetail(item.id)"
+          >
             <template #title>
               <p class="line-1">
                 <strong>{{ item.category }}</strong>
@@ -409,15 +399,6 @@ onMounted(() => {
                 <strong :class="item.billType === 'EXPENSE' ? 'expense-text' : 'income-text'">
                   {{ item.billType === 'EXPENSE' ? '-' : '+' }}{{ Number(item.amount).toFixed(2) }}
                 </strong>
-                <van-button
-                  size="mini"
-                  type="danger"
-                  plain
-                  :loading="deletingId === item.id"
-                  @click.stop="removeBill(item.id)"
-                >
-                  {{ TEXT.delete }}
-                </van-button>
               </div>
             </template>
           </van-cell>
@@ -531,12 +512,17 @@ onMounted(() => {
   box-shadow: 0 10px 20px rgba(48, 78, 49, 0.08);
 }
 
-.overview-head {
+.overview-entry {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0 0 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 8px;
+  color: inherit;
 }
 
 .panel-title {
@@ -545,10 +531,19 @@ onMounted(() => {
   color: #1f3f26;
 }
 
+.overview-arrow {
+  color: #708873;
+  font-size: 16px;
+}
+
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.summary-grid.loading {
+  opacity: 0.7;
 }
 
 .summary-card {
@@ -568,18 +563,21 @@ onMounted(() => {
   color: #9f2138;
 }
 
-.income {
-  background: #e8f8eb;
-  color: #1e6a2f;
-}
-
-.balance {
+.today {
   background: #edf3ff;
   color: #2d4e91;
 }
 
+.list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
 .list-title {
-  margin: 0 0 10px;
+  margin: 0;
   color: #213f27;
 }
 
@@ -738,9 +736,9 @@ onMounted(() => {
 
 .bill-side {
   text-align: right;
-  display: grid;
-  justify-items: end;
-  gap: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .income-text {

@@ -22,9 +22,39 @@ export function listBillsApi(params = {}) {
   return request(`/api/v1/bills${query ? `?${query}` : ''}`)
 }
 
+export function getBillOverviewSummaryApi() {
+  return request('/api/v1/bills/overview/summary')
+}
+
+export function getBillOverviewApi(params = {}) {
+  const queryParams = new URLSearchParams()
+  const scope = String(params.scope || 'MONTH').toUpperCase()
+
+  queryParams.set('scope', scope)
+  if (scope === 'YEAR' && params.year) {
+    queryParams.set('year', String(params.year))
+  }
+  if (scope === 'MONTH' && params.month) {
+    queryParams.set('month', String(params.month))
+  }
+
+  return request(`/api/v1/bills/overview?${queryParams.toString()}`)
+}
+
 export function createBillApi(data) {
   return request('/api/v1/bills', {
     method: 'POST',
+    data,
+  })
+}
+
+export function getBillApi(id) {
+  return request(`/api/v1/bills/${id}`)
+}
+
+export function updateBillApi(id, data) {
+  return request(`/api/v1/bills/${id}`, {
+    method: 'PATCH',
     data,
   })
 }

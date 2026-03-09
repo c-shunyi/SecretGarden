@@ -7,6 +7,7 @@ const { AppError } = require("../utils/app-error");
 const router = express.Router();
 
 const allowedBillTypes = new Set(["EXPENSE", "INCOME"]);
+const allowedOverviewScopes = new Set(["MONTH", "YEAR"]);
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 100;
 
@@ -77,6 +78,55 @@ function normalizePagination(pageValue, pageSizeValue) {
   };
 }
 
+function normalizeMonth(value, code = "INVALID_MONTH", message = "month must be YYYY-MM") {
+  const month = String(value || "").trim();
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    throw new AppError(400, code, message);
+  }
+  const [year, monthNumber] = month.split("-").map((item) => Number.parseInt(item, 10));
+  if (!Number.isInteger(year) || !Number.isInteger(monthNumber) || monthNumber < 1 || monthNumber > 12) {
+    throw new AppError(400, code, message);
+  }
+  return month;
+}
+
+function normalizeYear(value) {
+  const year = String(value || "").trim();
+  if (!/^\d{4}$/.test(year)) {
+    throw new AppError(400, "INVALID_YEAR", "year must be YYYY");
+  }
+  return year;
+}
+
+function normalizeOverviewScope(value) {
+  const scope = String(value || "MONTH")
+    .trim()
+    .toUpperCase();
+  if (!allowedOverviewScopes.has(scope)) {
+    throw new AppError(400, "INVALID_SCOPE", "scope only supports MONTH or YEAR");
+  }
+  return scope;
+}
+
+function getMonthRange(month) {
+  const [year, monthNumber] = month.split("-").map((item) => Number.parseInt(item, 10));
+  const start = `${month}-01`;
+  const end = new Date(Date.UTC(year, monthNumber, 1)).toISOString().slice(0, 10);
+  return { start, end };
+}
+
+function getYearRange(year) {
+  const yearValue = Number.parseInt(year, 10);
+  return {
+    start: `${year}-01-01`,
+    end: `${yearValue + 1}-01-01`,
+  };
+}
+
+function toAmount(value) {
+  return Number(Number(value || 0).toFixed(2));
+}
+
 function toBillView(row) {
   return {
     id: Number(row.id),
@@ -94,10 +144,8 @@ router.get(
   "/",
   authRequired,
   asyncHandler(async (req, res) => {
-    const month = String(req.query.month || "").trim();
-    if (month && !/^\d{4}-\d{2}$/.test(month)) {
-      throw new AppError(400, "INVALID_MONTH", "month must be YYYY-MM");
-    }
+    const monthRaw = String(req.query.month || "").trim();
+    const month = monthRaw ? normalizeMonth(monthRaw) : "";
 
     const { page, pageSize, offset } = normalizePagination(req.query.page, req.query.pageSize);
 
@@ -105,9 +153,7 @@ router.get(
     const whereParams = [req.user.id];
 
     if (month) {
-      const [year, monthNumber] = month.split("-").map((value) => Number.parseInt(value, 10));
-      const monthStart = `${month}-01`;
-      const nextMonthStart = new Date(Date.UTC(year, monthNumber, 1)).toISOString().slice(0, 10);
+      const { start: monthStart, end: nextMonthStart } = getMonthRange(month);
       whereParts.push("bill_date >= ? AND bill_date < ?");
       whereParams.push(monthStart, nextMonthStart);
     }
@@ -137,17 +183,33 @@ router.get(
       whereParams
     );
 
+    const today = new Date().toISOString().slice(0, 10);
+    const currentMonth = today.slice(0, 7);
+    const { start: currentMonthStart, end: nextMonthStart } = getMonthRange(currentMonth);
+    const overviewAggregate = await queryOne(
+      `
+        SELECT
+          COALESCE(SUM(CASE WHEN bill_date >= ? AND bill_date < ? THEN amount ELSE 0 END), 0) AS month_expense,
+          COALESCE(SUM(CASE WHEN bill_date = ? THEN amount ELSE 0 END), 0) AS today_expense
+        FROM bills
+        WHERE user_id = ? AND bill_type = 'EXPENSE'
+      `,
+      [currentMonthStart, nextMonthStart, today, req.user.id]
+    );
+
     const total = Number(aggregate?.total || 0);
-    const expense = Number(aggregate?.expense || 0);
-    const income = Number(aggregate?.income || 0);
+    const expense = toAmount(aggregate?.expense);
+    const income = toAmount(aggregate?.income);
     const bills = rows.map(toBillView);
 
     res.json({
       bills,
       summary: {
-        expense: Number(expense.toFixed(2)),
-        income: Number(income.toFixed(2)),
-        balance: Number((income - expense).toFixed(2)),
+        expense,
+        income,
+        balance: toAmount(income - expense),
+        monthExpense: toAmount(overviewAggregate?.month_expense),
+        todayExpense: toAmount(overviewAggregate?.today_expense),
       },
       pagination: {
         page,
@@ -155,6 +217,113 @@ router.get(
         total,
         hasMore: offset + bills.length < total,
       },
+    });
+  })
+);
+
+router.get(
+  "/overview/summary",
+  authRequired,
+  asyncHandler(async (req, res) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const currentMonth = today.slice(0, 7);
+    const { start: monthStart, end: nextMonthStart } = getMonthRange(currentMonth);
+
+    const overview = await queryOne(
+      `
+        SELECT
+          COALESCE(SUM(CASE WHEN bill_date >= ? AND bill_date < ? THEN amount ELSE 0 END), 0) AS month_expense,
+          COALESCE(SUM(CASE WHEN bill_date = ? THEN amount ELSE 0 END), 0) AS today_expense
+        FROM bills
+        WHERE user_id = ? AND bill_type = 'EXPENSE'
+      `,
+      [monthStart, nextMonthStart, today, req.user.id]
+    );
+
+    res.json({
+      month: currentMonth,
+      today,
+      monthExpense: toAmount(overview?.month_expense),
+      todayExpense: toAmount(overview?.today_expense),
+    });
+  })
+);
+
+router.get(
+  "/overview",
+  authRequired,
+  asyncHandler(async (req, res) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const currentMonth = today.slice(0, 7);
+    const currentYear = today.slice(0, 4);
+    const scope = normalizeOverviewScope(req.query.scope);
+
+    let periodLabel = "";
+    let range;
+
+    if (scope === "YEAR") {
+      const year = normalizeYear(req.query.year || currentYear);
+      periodLabel = year;
+      range = getYearRange(year);
+    } else {
+      const month = normalizeMonth(req.query.month || currentMonth);
+      periodLabel = month;
+      range = getMonthRange(month);
+    }
+
+    const totalAggregate = await queryOne(
+      `
+        SELECT COALESCE(SUM(amount), 0) AS total_expense
+        FROM bills
+        WHERE user_id = ?
+          AND bill_type = 'EXPENSE'
+          AND bill_date >= ?
+          AND bill_date < ?
+      `,
+      [req.user.id, range.start, range.end]
+    );
+
+    const categoryRows = await query(
+      `
+        SELECT category, COALESCE(SUM(amount), 0) AS total_amount
+        FROM bills
+        WHERE user_id = ?
+          AND bill_type = 'EXPENSE'
+          AND bill_date >= ?
+          AND bill_date < ?
+        GROUP BY category
+        ORDER BY total_amount DESC, category ASC
+      `,
+      [req.user.id, range.start, range.end]
+    );
+
+    const topRows = await query(
+      `
+        SELECT id, bill_type, category, amount, note, bill_date, created_at, updated_at
+        FROM bills
+        WHERE user_id = ?
+          AND bill_type = 'EXPENSE'
+          AND bill_date >= ?
+          AND bill_date < ?
+        ORDER BY amount DESC, bill_date DESC, id DESC
+        LIMIT 10
+      `,
+      [req.user.id, range.start, range.end]
+    );
+
+    res.json({
+      scope,
+      period: {
+        label: periodLabel,
+        start: range.start,
+        endExclusive: range.end,
+      },
+      totalExpense: toAmount(totalAggregate?.total_expense),
+      categories: categoryRows.map((row) => ({
+        category: row.category,
+        amount: toAmount(row.total_amount),
+      })),
+      topExpenses: topRows.map(toBillView),
     });
   })
 );
@@ -188,6 +357,34 @@ router.post(
 
     res.status(201).json({
       bill: toBillView(created),
+    });
+  })
+);
+
+router.get(
+  "/:id",
+  authRequired,
+  asyncHandler(async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      throw new AppError(400, "INVALID_ID", "invalid bill id");
+    }
+
+    const bill = await queryOne(
+      `
+        SELECT id, bill_type, category, amount, note, bill_date, created_at, updated_at
+        FROM bills
+        WHERE id = ? AND user_id = ?
+      `,
+      [id, req.user.id]
+    );
+
+    if (!bill) {
+      throw new AppError(404, "BILL_NOT_FOUND", "bill not found");
+    }
+
+    res.json({
+      bill: toBillView(bill),
     });
   })
 );
